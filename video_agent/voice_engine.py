@@ -30,12 +30,17 @@ def _download(name: str) -> str:
     os.makedirs(cache_dir(), exist_ok=True)
     last = None
     for pre in PROXIES:
+        tmp = dst + ".part"
         try:
-            urllib.request.urlretrieve(pre + MODEL_FILES[name], dst)
-            if os.path.getsize(dst) > 0:
+            urllib.request.urlretrieve(pre + MODEL_FILES[name], tmp)
+            if os.path.getsize(tmp) > 0:
+                os.replace(tmp, dst)
                 return dst
         except Exception as e:  # 试下一个代理
             last = e
+        finally:
+            if os.path.exists(tmp):
+                os.remove(tmp)
     raise RuntimeError(f"下载模型 {name} 失败（所有镜像不可用）: {last}")
 
 
