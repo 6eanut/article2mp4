@@ -8,12 +8,32 @@ def build_concat_file(ids, audio_dir) -> str:
     return "\n".join(f"file '{os.path.join(audio_dir, f'{i:03d}.mp3')}'" for i in ids) + "\n"
 
 
-def concat_voiceover(audio_dir, ids, out_path) -> str:
-    lst = out_path + ".txt"
-    with open(lst, "w", encoding="utf-8") as f:
-        f.write(build_concat_file(ids, audio_dir))
-    subprocess.run([ffmpeg_path(), "-y", "-f", "concat", "-safe", "0",
-                    "-i", lst, "-c", "copy", out_path], check=True, capture_output=True)
+def build_concat_filter(n: int, gap: float) -> str:
+    """每个输入后补 gap 秒静音，再顺序拼接（制作‘呼吸停顿’）。"""
+    pad = "".join(f"[{k}:a]apad=pad_dur={gap}[a{k}];" for k in range(n))
+    join = "".join(f"[a{k}]" for k in range(n))
+    return f"{pad}{join}concat=n={n}:v=0:a=1[out]"
+
+
+def concat_voiceover(audio_dir, ids, out_path, gap: float = 0.0) -> str:
+    ff = ffmpeg_path()
+    inputs = []
+    for i in ids:
+        inputs += ["-i", os.path.join(audio_dir, f"{i:03d}.mp3")]
+    if gap and gap > 0:
+        filt = build_concat_filter(len(ids), gap)
+        subprocess.run([ff, "-y", *inputs, "-filter_complex", filt,
+                        "-map", "[out]", out_path], check=True, capture_output=True)
+    else:
+        lst = out_path + ".txt"
+        try:
+            with open(lst, "w", encoding="utf-8") as f:
+                f.write(build_concat_file(ids, audio_dir))
+            subprocess.run([ff, "-y", "-f", "concat", "-safe", "0", "-i", lst,
+                            "-c", "copy", out_path], check=True, capture_output=True)
+        finally:
+            if os.path.exists(lst):
+                os.remove(lst)
     return out_path
 
 

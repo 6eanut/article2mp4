@@ -1,10 +1,12 @@
 from __future__ import annotations
 import re
 
+GAP = 0.4
+
 _CJK = re.compile(r"[\u4e00-\u9fff]")
 
 
-def align_durations(audio_durations, gap: float = 0.4):
+def align_durations(audio_durations, gap: float = GAP):
     return [d + gap for d in audio_durations]
 
 

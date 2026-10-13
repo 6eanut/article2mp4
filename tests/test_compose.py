@@ -14,3 +14,9 @@ def test_assert_av_sync_ok():
 def test_assert_av_sync_raises():
     with pytest.raises(AssertionError):
         assert_av_sync(10.0, 11.0, tol=0.3)
+
+def test_build_concat_filter_inserts_gap():
+    from video_agent.compose import build_concat_filter
+    f = build_concat_filter(2, 0.4)
+    assert f.count("apad=pad_dur=0.4") == 2
+    assert f.endswith("concat=n=2:v=0:a=1[out]")
