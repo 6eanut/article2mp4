@@ -1,10 +1,17 @@
 from __future__ import annotations
 import os
-from manim import Scene, config
+from manim import Scene, Text, FadeIn, DOWN, config
 
 from .config import CANVAS, FPS
-from .style import apply_manim_config
-from .templates import render_scene
+from .style import apply_manim_config, FONT, FG
+from .templates import render_scene, entrance_hold
+
+
+def _degrade_shot(scene, duration, subtitle=None):
+    props = scene.get("props", {})
+    text = props.get("text") or props.get("heading") or props.get("title") or "…"
+    t = Text(str(text), font=FONT, font_size=36, color=FG)
+    return entrance_hold(FadeIn(t), duration)
 
 
 def build_scene_sequence(scenes, durations, subtitle_map):
@@ -16,9 +23,26 @@ def build_scene_sequence(scenes, durations, subtitle_map):
     seq = []
     for sc, dur in zip(scenes, durations):
         sub = subtitle_map.get(sc["id"]) if subtitle_map else None
-        anims = render_scene(sc["type"], sc["props"], dur, sub)
+        try:
+            anims = render_scene(sc["type"], sc["props"], dur, sub)
+        except Exception:  # 画面出错降级继续：该镜退化为纯文字镜
+            anims = _degrade_shot(sc, dur, sub)
         seq.append((sc["type"], anims))
     return seq
+
+
+def _caption(text):
+    t = Text(str(text), font=FONT, font_size=28, color=FG)
+    if t.width > 12.0:
+        t.scale_to_fit_width(12.0)
+    return t.to_edge(DOWN, buff=0.6).set_z_index(10)
+
+
+def build_subtitle_map(spec, subtitles):
+    if not subtitles:
+        return {}
+    return {sc["id"]: subtitles[i]
+            for i, sc in enumerate(spec["scenes"]) if i < len(subtitles)}
 
 
 class ExplainSpec(Scene):
@@ -27,12 +51,18 @@ class ExplainSpec(Scene):
     SUBTITLE_MAP: dict = {}
 
     def construct(self):
-        for _, anims in build_scene_sequence(self.SCENES, self.DURATIONS, self.SUBTITLE_MAP):
+        for (_, anims), sc in zip(
+            build_scene_sequence(self.SCENES, self.DURATIONS, None), self.SCENES
+        ):
+            text = self.SUBTITLE_MAP.get(sc["id"])
+            if text:
+                self.add(_caption(text))
             for a in anims:
                 self.play(a)
+            self.clear()
 
 
-def render_video(spec, durations, aspect, out_dir, subtitle=False):
+def render_video(spec, durations, aspect, out_dir, subtitle=False, subtitles=None):
     apply_manim_config()
     w, h = CANVAS[aspect]
     config.pixel_width = w
@@ -41,8 +71,11 @@ def render_video(spec, durations, aspect, out_dir, subtitle=False):
     config.media_dir = os.path.join(out_dir, "media")
     sub_map = {}
     if subtitle:
-        for sc in spec["scenes"]:
-            sub_map[sc["id"]] = sc["props"].get("text") or sc["props"].get("heading", "")
+        if subtitles:
+            sub_map = build_subtitle_map(spec, subtitles)
+        else:
+            for sc in spec["scenes"]:
+                sub_map[sc["id"]] = sc["props"].get("text") or sc["props"].get("heading", "")
     ExplainSpec.SCENES = spec["scenes"]
     ExplainSpec.DURATIONS = durations
     ExplainSpec.SUBTITLE_MAP = sub_map
