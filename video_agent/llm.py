@@ -38,11 +38,16 @@ class LLMClient:
         for _ in range(retries + 1):
             raw = self._transport(messages)
             try:
-                return json.loads(strip_fence(raw))
+                parsed = json.loads(strip_fence(raw))
             except json.JSONDecodeError as e:
                 last_err = e
-                messages = messages + [
-                    {"role": "assistant", "content": raw},
-                    {"role": "user", "content": f"输出不是合法 JSON（{e}）。只输出 JSON，不要解释。"},
-                ]
+                parsed = None
+            else:
+                if isinstance(parsed, dict):
+                    return parsed
+                last_err = ValueError(f"期望 JSON 对象，得到 {type(parsed).__name__}")
+            messages = messages + [
+                {"role": "assistant", "content": raw},
+                {"role": "user", "content": f"输出必须是 JSON 对象（{{...}}），不要数组/标量。错误：{last_err}。只输出 JSON，不要解释。"},
+            ]
         raise LLMError(f"无法获得合法 JSON: {last_err}")
