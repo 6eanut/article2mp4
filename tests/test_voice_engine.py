@@ -233,3 +233,12 @@ def test_chunk_splits_at_boundary_never_mid_list():
     chunks = voice_engine._chunk(text, len, max_tokens=8)
     assert "".join(chunks) == text
     assert all(len(c) <= 8 for c in chunks)
+
+
+def test_chunk_respects_sentence_end_before_list_comma():
+    """Hard sentence ends are the packing boundary: a list joined by `、` must not
+    let a chunk run past a `。` end when each sentence fits the budget. This fails
+    on the old behaviour, which split at `、` and packed across the sentence end."""
+    text = "甲、乙、丙。丁、戊、己。"   # two 6-char sentences, 12 chars total
+    chunks = voice_engine._chunk(text, len, max_tokens=8)
+    assert chunks == ["甲、乙、丙。", "丁、戊、己。"]
