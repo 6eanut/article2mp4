@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+from pydantic import ValidationError
 from .llm import LLMClient, LLMError
 from .schema import Narration
 
@@ -20,4 +21,7 @@ def generate_narration(article_md: str, client: LLMClient) -> Narration:
         raw = client.chat_json(messages, retries=2)
     except LLMError as e:
         raise LLMError(f"口播稿生成失败: {e}")
-    return Narration(**raw)
+    try:
+        return Narration(**raw)
+    except ValidationError as e:
+        raise LLMError(f"口播稿格式不合法: {str(e).splitlines()[0][:200]}")

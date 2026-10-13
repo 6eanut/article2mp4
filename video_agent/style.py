@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
 from manim import (
-    VGroup, Text, RoundedRectangle, Line, Cross, DOWN, NORMAL, BOLD, config,
+    VGroup, Text, RoundedRectangle, Line, Cross, DOWN, BOLD, config,
 )
 
 FONT = "Noto Sans SC"
@@ -62,5 +62,5 @@ def cand_box(mark, color, size=0.68):
     if mark == "tick":
         g = tick(color).scale(0.9).move_to(box)
     else:
-        g = Cross(color=RED, stroke_width=5).scale(0.5).move_to(box)
+        g = Cross(color=color, stroke_width=5).scale(0.5).move_to(box)
     return VGroup(box, g)
