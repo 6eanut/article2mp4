@@ -2,12 +2,12 @@ import pytest
 from video_agent.templates import TEMPLATES, render_scene
 
 CASES = [
-    ("steps", {"heading": "流程", "steps": ["甲", "乙", "丙"], "done_index": 1}, 4.0),
-    ("cycle", {"heading": "循环", "nodes": ["推理", "行动", "观察"]}, 4.0),
-    ("tree", {"heading": "搜索树", "root": "根", "children": [["a", "b"], ["c"]]}, 4.0),
-    ("grid", {"heading": "候选", "cells": [{"label": "A", "mark": "cross"},
+    ("steps", {"heading": "Flow", "steps": ["one", "two", "three"], "done_index": 1}, 4.0),
+    ("cycle", {"heading": "Loop", "nodes": ["Reason", "Act", "Observe"]}, 4.0),
+    ("tree", {"heading": "Search tree", "root": "root", "children": [["a", "b"], ["c"]]}, 4.0),
+    ("grid", {"heading": "Candidates", "cells": [{"label": "A", "mark": "cross"},
                                             {"label": "B", "mark": "tick"}]}, 3.0),
-    ("metric", {"heading": "提升", "value": 42, "unit": "%", "label": "准确率"}, 4.0),
+    ("metric", {"heading": "Improvement", "value": 42, "unit": "%", "label": "Accuracy"}, 4.0),
 ]
 
 def test_all_12_registered():

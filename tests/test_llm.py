@@ -23,7 +23,7 @@ def test_chat_json_retries_then_raises():
     c = LLMClient(S, transport=bad)
     with pytest.raises(LLMError):
         c.chat_json([{"role": "user", "content": "hi"}], retries=1)
-    assert calls["n"] == 2  # 首次 + 1 次重试
+    assert calls["n"] == 2  # first attempt + 1 retry
 
 def test_chat_json_rejects_non_object():
     c = LLMClient(S, transport=lambda m: "42")

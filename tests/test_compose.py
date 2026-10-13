@@ -9,7 +9,7 @@ def test_build_concat_file_lists_in_order(tmp_path):
     assert text.count("file ") == 2
 
 def test_assert_av_sync_ok():
-    assert_av_sync(10.0, 10.2, tol=0.3)  # 不抛
+    assert_av_sync(10.0, 10.2, tol=0.3)  # does not raise
 
 def test_assert_av_sync_raises():
     with pytest.raises(AssertionError):

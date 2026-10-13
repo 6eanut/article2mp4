@@ -14,13 +14,13 @@ def test_core_three_registered():
 
 
 def test_render_title_returns_anims():
-    anims = render_scene("title", {"title": "标题", "subtitle": "副标题"}, duration=2.5)
+    anims = render_scene("title", {"title": "Title", "subtitle": "Subtitle"}, duration=2.5)
     assert len(anims) >= 1
     assert abs(sum(a.run_time for a in anims) - 2.5) < 1e-6
 
 
 def test_render_bullets_returns_anims():
-    anims = render_scene("bullets", {"heading": "要点", "items": ["a", "b", "c"]}, duration=4.0)
+    anims = render_scene("bullets", {"heading": "Points", "items": ["a", "b", "c"]}, duration=4.0)
     assert abs(sum(a.run_time for a in anims) - 4.0) < 1e-6
 
 

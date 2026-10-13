@@ -2,12 +2,12 @@ import os
 from video_agent.cli import run_pipeline
 from video_agent.schema import Narration, SceneSpec
 
-NARR = Narration(title="T", segments=[{"id": 0, "text": "一"}, {"id": 1, "text": "二"}])
+NARR = Narration(title="T", segments=[{"id": 0, "text": "one"}, {"id": 1, "text": "two"}])
 
 def _spec():
     return SceneSpec(title="T", aspects=["916", "169"], scenes=[
         {"id": 0, "narration_id": 0, "type": "title", "props": {"title": "T"}},
-        {"id": 1, "narration_id": 1, "type": "closing", "props": {"text": "完"}},
+        {"id": 1, "narration_id": 1, "type": "closing", "props": {"text": "done"}},
     ])
 
 def test_run_pipeline_writes_intermediates(tmp_path):
@@ -60,7 +60,7 @@ def test_run_pipeline_passes_subtitles(tmp_path):
     )
     run_pipeline(str(art), aspect="916", max_seconds=None, voice="v",
                  subtitle=True, voiceover_only=False, out_dir=str(out), deps=deps)
-    assert seen["subs"] == ["一", "二"]
+    assert seen["subs"] == ["one", "two"]
 
 def test_max_seconds_trims_shots_and_audio(tmp_path):
     art = tmp_path / "a.md"; art.write_text("# hi", encoding="utf-8")

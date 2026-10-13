@@ -3,8 +3,8 @@ from video_agent.tts import render_voiceover
 from video_agent.schema import Narration
 from video_agent import tts
 
-NARR = Narration(title="T", segments=[{"id": 0, "text": "一"},
-                                      {"id": 1, "text": "二"}])
+NARR = Narration(title="T", segments=[{"id": 0, "text": "one"},
+                                      {"id": 1, "text": "two"}])
 
 def test_render_voiceover_passes_speed(tmp_path):
     seen = {}

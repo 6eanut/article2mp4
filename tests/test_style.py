@@ -7,9 +7,9 @@ def test_tokens():
 
 def test_chip_is_a_vgroup():
     from manim import VGroup
-    g = chip("测试", font_size=24)
+    g = chip("test", font_size=24)
     assert isinstance(g, VGroup)
-    assert len(g) == 2  # 圆角框 + 文字
+    assert len(g) == 2  # rounded box + text
 
 def test_tick_has_two_segments():
     t = tick(ACCENT[0])

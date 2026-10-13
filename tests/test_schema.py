@@ -2,7 +2,7 @@ import pytest
 from video_agent.schema import Narration, validate_scene_spec, ContractError
 
 NARR = Narration(title="T", segments=[
-    {"id": 0, "text": "第一句"}, {"id": 1, "text": "第二句"},
+    {"id": 0, "text": "first sentence"}, {"id": 1, "text": "second sentence"},
 ])
 
 def _spec(scenes):
@@ -11,7 +11,7 @@ def _spec(scenes):
 def test_valid_spec_passes():
     raw = _spec([
         {"id": 0, "narration_id": 0, "type": "title", "props": {"title": "T", "subtitle": "s"}},
-        {"id": 1, "narration_id": 1, "type": "quote", "props": {"text": "金句"}},
+        {"id": 1, "narration_id": 1, "type": "quote", "props": {"text": "a memorable line"}},
     ])
     spec = validate_scene_spec(raw, NARR)
     assert len(spec.scenes) == 2
@@ -27,7 +27,7 @@ def test_unknown_type_rejected():
 
 def test_count_mismatch_rejected():
     raw = _spec([{"id": 0, "narration_id": 0, "type": "title", "props": {"title": "T"}}])
-    with pytest.raises(ContractError, match="数量"):
+    with pytest.raises(ContractError, match="does not match narration segment count"):
         validate_scene_spec(raw, NARR)
 
 def test_narration_id_mismatch_rejected():
@@ -40,7 +40,7 @@ def test_narration_id_mismatch_rejected():
 
 def test_missing_required_prop_rejected():
     raw = _spec([
-        {"id": 0, "narration_id": 0, "type": "title", "props": {"subtitle": "缺title"}},
+        {"id": 0, "narration_id": 0, "type": "title", "props": {"subtitle": "missing title"}},
         {"id": 1, "narration_id": 1, "type": "quote", "props": {"text": "x"}},
     ])
     with pytest.raises(ContractError, match="title"):
