@@ -1,0 +1,13 @@
+from manim import FadeIn, VGroup, Text, DOWN, RIGHT
+from ..style import FONT, FG, ACCENT
+from . import entrance_hold
+
+
+def render(props, duration, subtitle=None):
+    h = Text(props["heading"], font=FONT, font_size=38, weight="BOLD", color=FG)
+    chips = VGroup(*[
+        Text(i, font=FONT, font_size=28, color=ACCENT[k % len(ACCENT)])
+        for k, i in enumerate(props["items"])
+    ]).arrange(RIGHT, buff=0.4)
+    body = VGroup(h, chips).arrange(DOWN, buff=0.6)
+    return entrance_hold(FadeIn(body), duration)
