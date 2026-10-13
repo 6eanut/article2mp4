@@ -7,27 +7,31 @@ from .config import load_settings
 from .llm import LLMClient
 from .script_gen import generate_narration
 from .scene_gen import generate_scene_spec
-from .timing import align_durations
-from .tts import render_voiceover
+from .timing import align_durations, GAP
+from .tts import render_voiceover, probe_duration
 from .render import render_video
-from .compose import concat_voiceover, mux
+from .compose import concat_voiceover, mux, assert_av_sync
 
 
 def _default_deps():
     def _client():
         return LLMClient(load_settings())
 
-    def _render(spec, durations, aspect, out_dir, subtitle):
-        return render_video(spec, durations, aspect, out_dir, subtitle=subtitle)
+    def _render(spec, durations, aspect, out_dir, subtitle, subtitles=None):
+        return render_video(spec, durations, aspect, out_dir,
+                            subtitle=subtitle, subtitles=subtitles)
 
     def _voiceover(narration, out_dir, voice):
         return render_voiceover(narration, out_dir, voice)
 
     def _compose(**k):
         ids = [s.id for s in k["narration"].segments]
-        vo = concat_voiceover(k["audio_dir"], ids, os.path.join(k["out_dir"], "voice.mp3"))
+        vo = concat_voiceover(k["audio_dir"], ids,
+                              os.path.join(k["out_dir"], "voice.mp3"), gap=GAP)
         out = os.path.join(k["out_dir"], f"{k['name']}_{k['aspect']}.mp4")
-        return mux(k["video"], vo, k.get("bgm"), out)
+        mux(k["video"], vo, k.get("bgm"), out)
+        assert_av_sync(probe_duration(out), probe_duration(vo), tol=0.3)
+        return out
 
     return dict(client=_client, render=_render, voiceover=_voiceover,
                 compose=_compose, script_gen=generate_narration, scene_gen=generate_scene_spec)
@@ -40,7 +44,8 @@ def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
     out_dir = out_dir or os.path.join("output", name)
     os.makedirs(out_dir, exist_ok=True)
 
-    article = open(article_path, encoding="utf-8").read()
+    with open(article_path, encoding="utf-8") as f:
+        article = f.read()
     client = deps["client"]()
     narration = deps["script_gen"](article, client)
     with open(os.path.join(out_dir, "narration.json"), "w", encoding="utf-8") as f:
@@ -54,6 +59,8 @@ def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
     if voiceover_only:
         return {"narration": os.path.join(out_dir, "narration.json")}
 
+    subtitles = [s.text for s in narration.segments] if subtitle else None
+
     spec = deps["scene_gen"](narration, client)
     with open(os.path.join(out_dir, "scene_spec.json"), "w", encoding="utf-8") as f:
         json.dump(json.loads(spec.model_dump_json()), f, ensure_ascii=False, indent=2)
@@ -63,7 +70,8 @@ def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
     aspects = ["916", "169"] if aspect == "both" else [aspect]
     result = {}
     for asp in aspects:
-        video = deps["render"](json.loads(spec.model_dump_json()), shot, asp, out_dir, subtitle)
+        video = deps["render"](json.loads(spec.model_dump_json()), shot, asp,
+                               out_dir, subtitle, subtitles)
         result[asp] = deps["compose"](
             video=video, audio_dir=audio_dir, narration=narration, out_dir=out_dir,
             name=name, aspect=asp, bgm=bgm,

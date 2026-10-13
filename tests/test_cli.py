@@ -16,7 +16,7 @@ def test_run_pipeline_writes_intermediates(tmp_path):
     deps = dict(
         script_gen=lambda md, client: NARR,
         scene_gen=lambda n, client: _spec(),
-        render=lambda sp, dur, asp, o, sub: f"{o}/silent_{asp}.mp4",
+        render=lambda sp, dur, asp, o, sub, subs=None: f"{o}/silent_{asp}.mp4",
         voiceover=lambda n, o, voice: [2.4, 2.4],
         compose=lambda **k: f"{k['out_dir']}/{k['name']}_{k['aspect']}.mp4",
         client=lambda: object(),
@@ -42,3 +42,22 @@ def test_voiceover_only_skips_render(tmp_path):
                  subtitle=False, voiceover_only=True, out_dir=str(out), deps=deps)
     assert called["render"] == 0
     assert os.path.exists(str(out / "narration.json"))
+
+def test_run_pipeline_passes_subtitles(tmp_path):
+    art = tmp_path / "a.md"; art.write_text("# hi", encoding="utf-8")
+    out = tmp_path / "out"
+    seen = {}
+    def render(sp, dur, asp, o, sub, subs=None):
+        seen["subs"] = subs
+        return f"{o}/silent_{asp}.mp4"
+    deps = dict(
+        script_gen=lambda md, client: NARR,
+        scene_gen=lambda n, client: _spec(),
+        render=render,
+        voiceover=lambda n, o, voice: [2.4, 2.4],
+        compose=lambda **k: f"{k['out_dir']}/{k['name']}_{k['aspect']}.mp4",
+        client=lambda: object(),
+    )
+    run_pipeline(str(art), aspect="916", max_seconds=None, voice="v",
+                 subtitle=True, voiceover_only=False, out_dir=str(out), deps=deps)
+    assert seen["subs"] == ["一", "二"]
