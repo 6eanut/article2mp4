@@ -6,7 +6,7 @@ over-long heading/line shrinks to fit instead of being cut off.
 """
 from __future__ import annotations
 
-from ..render import DESIGN_FRAME_WIDTH
+from ..config import DESIGN_FRAME_WIDTH
 
 # A small horizontal margin so glyph edges never touch the frame border.
 FRAME_SAFE_WIDTH: float = DESIGN_FRAME_WIDTH - 0.6

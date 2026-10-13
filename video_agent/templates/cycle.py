@@ -2,6 +2,7 @@ import numpy as np
 from manim import FadeIn, VGroup, Text, CurvedArrow, DOWN
 from ..style import FONT, ACCENT
 from . import entrance_hold
+from ._fit import fit_group
 
 
 def render(props, duration, subtitle=None):

@@ -5,6 +5,11 @@ from dataclasses import dataclass
 CANVAS = {"916": (1080, 1920), "169": (1920, 1080)}
 FPS = 30
 
+# The logical frame width uses the 16:9 design width 14.222 (=1920/135), so the
+# 9:16 and 16:9 versions share the same pixels-per-unit scale and template font
+# sizes stay universal; the height is derived from the canvas ratio.
+DESIGN_FRAME_WIDTH = 14.222222222222221
+
 TEMPLATE_TYPES = [
     "title", "section", "bullets", "steps", "cycle", "tree",
     "compare", "grid", "metric", "quote", "summary", "closing",

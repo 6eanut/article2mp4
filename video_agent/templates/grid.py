@@ -1,6 +1,7 @@
 from manim import FadeIn, VGroup, Text, DOWN, RIGHT
 from ..style import FONT, FG, ACCENT, cand_box
 from . import entrance_hold
+from ._fit import fit_group
 
 
 def render(props, duration, subtitle=None):
@@ -12,4 +13,5 @@ def render(props, duration, subtitle=None):
         boxes.add(VGroup(box, lbl))
     boxes.arrange(RIGHT, buff=0.6)
     body = VGroup(h, boxes).arrange(DOWN, buff=0.7)
+    fit_group(body)
     return entrance_hold(FadeIn(body), duration)

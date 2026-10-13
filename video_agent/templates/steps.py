@@ -1,6 +1,7 @@
 from manim import FadeIn, VGroup, Text, Dot, Line, DOWN, UP, LEFT, RIGHT
 from ..style import FONT, FG, DIM, ACCENT, tick
 from . import entrance_hold
+from ._fit import fit_group
 
 
 def render(props, duration, subtitle=None):
@@ -17,4 +18,5 @@ def render(props, duration, subtitle=None):
         for i in range(props["done_index"] + 1):
             marks.add(tick(ACCENT[4]).next_to(dots[i], UP, buff=0.2))
     body = VGroup(h, line, dots, labels, marks).arrange(DOWN, buff=0.6)
+    fit_group(body)
     return entrance_hold(FadeIn(body), duration)

@@ -3,14 +3,9 @@ import logging
 import os
 from manim import Scene, Text, FadeIn, DOWN, config
 
-from .config import CANVAS, FPS
+from .config import CANVAS, FPS, DESIGN_FRAME_WIDTH
 from .style import apply_manim_config, FONT, FG
 from .templates import render_scene, entrance_hold
-
-# The logical frame width uses the 16:9 design width 14.222 (=1920/135), so the
-# 9:16 and 16:9 versions share the same pixels-per-unit scale and template font
-# sizes stay universal; the height is derived from the canvas ratio.
-DESIGN_FRAME_WIDTH = 14.222222222222221
 
 
 def frame_dimensions(aspect: str) -> tuple[float, float]:

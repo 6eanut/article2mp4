@@ -1,6 +1,7 @@
 from manim import FadeIn, VGroup, Text, Line, DOWN, UP, RIGHT
 from ..style import FONT, FG, ACCENT
 from . import entrance_hold
+from ._fit import fit_group
 
 
 def render(props, duration, subtitle=None):
@@ -15,4 +16,5 @@ def render(props, duration, subtitle=None):
                      for k in kids])
     graph = VGroup(edges, root, kids)
     body = VGroup(h, graph).arrange(DOWN, buff=0.6)
+    fit_group(body)
     return entrance_hold(FadeIn(body), duration)
