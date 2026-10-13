@@ -59,7 +59,7 @@ def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
         json.dump(json.loads(narration.model_dump_json()), f, ensure_ascii=False, indent=2)
 
     audio_dir = os.path.join(out_dir, "audio")
-    prog.stage(3, TOTAL, "Voiceover")
+    prog.stage(2, TOTAL, "Voiceover")
     durations = deps["voiceover"](narration, audio_dir, voice)
     prog.detail(f"{len(durations)} audio files")
     trim_to = None
@@ -75,7 +75,7 @@ def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
 
     subtitles = [s.text for s in narration.segments] if subtitle else None
 
-    prog.stage(2, TOTAL, "Scene spec")
+    prog.stage(3, TOTAL, "Scene spec")
     spec = deps["scene_gen"](narration, client)
     prog.detail(f"{len(spec.scenes)} scenes")
     with open(os.path.join(out_dir, "scene_spec.json"), "w", encoding="utf-8") as f:

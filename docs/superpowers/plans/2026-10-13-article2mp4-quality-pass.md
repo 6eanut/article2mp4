@@ -1012,9 +1012,12 @@ def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
     return {"video": result[aspect] if aspect in result else next(iter(result.values())),
             "all": result}
 ```
-Note: stage 2 (Scene spec) is generated **before** stage 3 in the existing body;
-keep the existing order and simply place the `prog.stage(...)` call immediately
-before each stage's real work, matching the numbering above.
+Note: Scene spec's real work runs **after** Voiceover in the existing body,
+because scene generation consumes the narration that `--max-seconds` may have
+trimmed, and trimming needs the voiceover durations. Keep that execution order,
+and number each stage by its **print position** (Narration=1, Voiceover=2,
+Scene spec=3, Align=4, Render=5, Compose=6) so the counter is monotonic and
+matches the reader's sense of "how far along are we".
 
 - [ ] **Step 4: Run the CLI tests, then the whole suite**
 

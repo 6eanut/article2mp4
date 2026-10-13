@@ -82,7 +82,8 @@ def test_max_seconds_trims_shots_and_audio(tmp_path):
     assert len(seen["narration"].segments) == 1   # only shot 0 fits under 3.0
     assert seen["trim_to"] == 2.4 + 0.4           # 2.8
 
-def test_run_pipeline_reports_progress(tmp_path, capsys):
+def test_run_pipeline_reports_monotonic_progress(tmp_path, capsys):
+    import re
     art = tmp_path / "a.md"; art.write_text("# hi", encoding="utf-8")
     out = tmp_path / "out"
     deps = dict(
@@ -96,8 +97,8 @@ def test_run_pipeline_reports_progress(tmp_path, capsys):
     run_pipeline(str(art), aspect="916", max_seconds=None, voice="v",
                  subtitle=True, voiceover_only=False, out_dir=str(out), deps=deps)
     out_text = capsys.readouterr().out
-    assert "[1/6] Narration" in out_text
-    assert "[6/6] Compose" in out_text
+    nums = [int(m.group(1)) for m in re.finditer(r"^\[(\d+)/6\]", out_text, re.M)]
+    assert nums == [1, 2, 3, 4, 5, 6]
 
 
 def test_default_subtitle_option_is_on():
