@@ -34,10 +34,18 @@ def _download(name: str) -> str:
     for pre in PROXIES:
         tmp = dst + ".part"
         try:
-            urllib.request.urlretrieve(pre + MODEL_FILES[name], tmp)
-            if os.path.getsize(tmp) > 0:
-                os.replace(tmp, dst)
-                return dst
+            resp = urllib.request.urlopen(pre + MODEL_FILES[name])
+            blob = resp.read()
+            length = resp.headers.get("Content-Length")
+            if length:
+                if len(blob) != int(length):
+                    raise OSError("下载被截断（字节数不匹配）")
+            elif len(blob) == 0:
+                raise OSError("下载为空")
+            with open(tmp, "wb") as f:
+                f.write(blob)
+            os.replace(tmp, dst)
+            return dst
         except Exception as e:  # 试下一个代理
             last = e
         finally:

@@ -2,6 +2,18 @@ import os
 import pytest
 from video_agent import voice_engine
 
+
+class _FakeResp:
+    """Minimal file-like stand-in for `urllib.request.urlopen`'s response."""
+
+    def __init__(self, data, content_length=None):
+        self._data = data
+        self.headers = ({"Content-Length": str(content_length)}
+                        if content_length is not None else {})
+
+    def read(self, *args, **kwargs):
+        return self._data
+
 @pytest.mark.skipif(not os.environ.get("KOKORO_SMOKE"),
                     reason="set KOKORO_SMOKE=1 to download models and run real synthesis")
 def test_real_zh_synthesis(tmp_path):
@@ -130,9 +142,10 @@ def test_model_files_cover_both_generators():
 def test_ensure_models_uses_proxy_and_skips_existing(monkeypatch, tmp_path):
     monkeypatch.setenv("KOKORO_MODEL_DIR", str(tmp_path))
     got = []
-    def fake_urlretrieve(url, dst):
-        got.append(url); open(dst, "wb").write(b"x" * 10)
-    monkeypatch.setattr(voice_engine.urllib.request, "urlretrieve", fake_urlretrieve)
+    def fake_urlopen(url):
+        got.append(url)
+        return _FakeResp(b"x" * 10, content_length=10)
+    monkeypatch.setattr(voice_engine.urllib.request, "urlopen", fake_urlopen)
     voice_engine.ensure_models()
     assert len(got) == 2
     assert all(u.startswith(voice_engine.PROXIES[0]) for u in got)
@@ -143,11 +156,10 @@ def test_ensure_models_uses_proxy_and_skips_existing(monkeypatch, tmp_path):
 def test_partial_download_leaves_no_final_file(monkeypatch, tmp_path):
     monkeypatch.setenv("KOKORO_MODEL_DIR", str(tmp_path))
     attempts = []
-    def partial_then_raise(url, dst):
+    def drop_urlopen(url):
         attempts.append(url)
-        open(dst, "wb").write(b"partial")
         raise OSError("connection dropped")
-    monkeypatch.setattr(voice_engine.urllib.request, "urlretrieve", partial_then_raise)
+    monkeypatch.setattr(voice_engine.urllib.request, "urlopen", drop_urlopen)
     with pytest.raises(RuntimeError):
         voice_engine._download("kokoro-v1.1-zh.int8.onnx")
     # final model path must be untouched (no partial cached as valid model)
@@ -156,3 +168,43 @@ def test_partial_download_leaves_no_final_file(monkeypatch, tmp_path):
     assert attempts == [p + voice_engine.MODEL_FILES["kokoro-v1.1-zh.int8.onnx"]
                         for p in voice_engine.PROXIES]
     assert not os.path.exists(voice_engine.model_path("kokoro-v1.1-zh.int8.onnx") + ".part")
+
+def test_truncated_download_falls_through_to_next_proxy(monkeypatch, tmp_path):
+    """A proxy returning fewer bytes than Content-Length must be rejected and the
+    file tried on the next proxy, never cached under the real dst."""
+    monkeypatch.setenv("KOKORO_MODEL_DIR", str(tmp_path))
+    dst = voice_engine.model_path("kokoro-v1.1-zh.int8.onnx")
+    calls = []
+
+    def fake_urlopen(url):
+        calls.append(url)
+        if url.startswith(voice_engine.PROXIES[0]):
+            return _FakeResp(b"truncated", content_length=100)  # 9 != 100
+        return _FakeResp(b"x" * 100, content_length=100)
+
+    monkeypatch.setattr(voice_engine.urllib.request, "urlopen", fake_urlopen)
+    got = voice_engine._download("kokoro-v1.1-zh.int8.onnx")
+    assert got == dst
+    assert os.path.getsize(dst) == 100        # full file finally cached
+    assert os.path.exists(dst)                 # via a non-first proxy
+    assert calls[0].startswith(voice_engine.PROXIES[0])
+    assert calls[1].startswith(voice_engine.PROXIES[1])
+    assert not os.path.exists(dst + ".part")   # temp always cleaned up
+
+def test_all_proxies_truncate_raises_and_leaves_no_final(monkeypatch, tmp_path):
+    """When every proxy truncates (size != Content-Length), _download raises and
+    leaves no final file and no leftover temp."""
+    monkeypatch.setenv("KOKORO_MODEL_DIR", str(tmp_path))
+    dst = voice_engine.model_path("kokoro-v1.1-zh.int8.onnx")
+    calls = []
+
+    def truncate_urlopen(url):
+        calls.append(url)
+        return _FakeResp(b"partial", content_length=100)
+
+    monkeypatch.setattr(voice_engine.urllib.request, "urlopen", truncate_urlopen)
+    with pytest.raises(RuntimeError):
+        voice_engine._download("kokoro-v1.1-zh.int8.onnx")
+    assert len(calls) == len(voice_engine.PROXIES)  # every proxy attempted
+    assert not os.path.exists(dst)                  # no partial cached as valid
+    assert not os.path.exists(dst + ".part")
