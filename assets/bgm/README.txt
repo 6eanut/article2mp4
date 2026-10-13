@@ -1,1 +1,2 @@
-把免版权循环配乐命名为 track.mp3 放在本目录。缺失时合成会自动跳过 BGM。
+Place a royalty-free looping music track in this directory, named track.mp3.
+If it is absent, the mux step simply skips the background music.
