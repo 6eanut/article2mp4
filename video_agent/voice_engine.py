@@ -70,50 +70,82 @@ _MAX_TOKENS = 500
 # Samples of silence (0.05 s @ 24 kHz) inserted between concatenated chunks.
 _CHUNK_GAP_SAMPLES = int(0.05 * SAMPLE_RATE)
 
-# Characters that denote a sentence boundary (punctuation kept attached).
-_SENTENCE_SEP = "。！？；、\n"
+# Punctuation that denotes a sentence end (a full pause may follow). The
+# enumeration comma `、` and the halfwidth comma are deliberately NOT here —
+# splitting at them chops lists and restarts prosody mid-sentence.
+_HARD_SEP = "。！？!?…\n"
+# Clause punctuation: used only as a split point when the token budget forces it.
+_SOFT_SEP = "；;"
+# Kept for backwards compatibility with callers/tests that reference it.
+_SENTENCE_SEP = _HARD_SEP + _SOFT_SEP
 
 
 def _chunk(text: str, count_tokens, max_tokens: int = _MAX_TOKENS) -> list[str]:
     """Split ``text`` into pieces whose ``count_tokens`` never exceeds ``max_tokens``.
 
-    ``count_tokens(s)`` must return the token count of a string (callers wrap the
-    g2p+tokenizer in a lambda). Sentences are greedily packed on Chinese
-    sentence boundaries (keeping the trailing punctuation). A single sentence
-    longer than the limit is hard-split by characters into fitting pieces.
+    Splits happen only at sentence ends (``_HARD_SEP``) and — when the budget
+    forces it — at clause punctuation (``_SOFT_SEP``). The enumeration comma ``、``
+    is never a split point. A single piece longer than the limit is hard-split by
+    characters.
     """
     if not text:
         return [""]
     if count_tokens(text) <= max_tokens:
         return [text]
 
-    sentences = _split_sentences(text)
+    units = _split_sentences(text)
     chunks: list[str] = []
     buf = ""
-    for sent in sentences:
-        if count_tokens(sent) <= max_tokens:
-            if buf and count_tokens(buf + sent) > max_tokens:
+    for unit in units:
+        if count_tokens(unit) <= max_tokens:
+            if buf and count_tokens(buf + unit) > max_tokens:
                 chunks.append(buf)
-                buf = sent
+                buf = unit
             else:
-                buf += sent
+                buf += unit
         else:
             if buf:
                 chunks.append(buf)
                 buf = ""
-            chunks.extend(_hard_split(sent, count_tokens, max_tokens))
+            for piece in _soft_split(unit):
+                if count_tokens(piece) <= max_tokens:
+                    if buf and count_tokens(buf + piece) > max_tokens:
+                        chunks.append(buf)
+                        buf = piece
+                    else:
+                        buf += piece
+                else:
+                    if buf:
+                        chunks.append(buf)
+                        buf = ""
+                    chunks.extend(_hard_split(piece, count_tokens, max_tokens))
     if buf:
         chunks.append(buf)
     return chunks
 
 
-def _split_sentences(text: str) -> list[str]:
-    """Split on Chinese sentence punctuation, keeping the punctuation attached."""
+def _soft_split(text: str) -> list[str]:
+    """Break a too-long sentence at clause punctuation (``_SOFT_SEP``), keeping
+    the punctuation attached. Returns ``[text]`` unchanged when there is no break."""
     parts: list[str] = []
     cur = ""
     for ch in text:
         cur += ch
-        if ch in _SENTENCE_SEP:
+        if ch in _SOFT_SEP:
+            parts.append(cur)
+            cur = ""
+    if cur:
+        parts.append(cur)
+    return parts or [text]
+
+
+def _split_sentences(text: str) -> list[str]:
+    """Split on hard sentence ends only, keeping the punctuation attached."""
+    parts: list[str] = []
+    cur = ""
+    for ch in text:
+        cur += ch
+        if ch in _HARD_SEP:
             parts.append(cur)
             cur = ""
     if cur:

@@ -208,3 +208,28 @@ def test_all_proxies_truncate_raises_and_leaves_no_final(monkeypatch, tmp_path):
     assert len(calls) == len(voice_engine.PROXIES)  # every proxy attempted
     assert not os.path.exists(dst)                  # no partial cached as valid
     assert not os.path.exists(dst + ".part")
+
+def test_enumeration_comma_never_splits_chunk():
+    """`、` is an enumeration comma: it must not create a chunk boundary even
+    when the text is long, so a listed phrase is spoken as one clause group."""
+    # count_tokens = len → max_tokens counts characters (5 chars per item).
+    text = "苹果、香蕉、西瓜、菠萝。"          # 12 chars
+    chunks = voice_engine._chunk(text, len, max_tokens=11)  # must split somewhere
+    assert len(chunks) > 1
+    # The only legal break is at the hard end `。`; `、` must not start a chunk.
+    for c in chunks:
+        assert not c.startswith("、")
+    assert "".join(chunks) == text
+
+
+def test_split_sentences_only_hard_ends_single_turn():
+    """A sentence with soft punctuation stays in ONE turn until a real end."""
+    turns = voice_engine._split_sentences("先做甲；再做乙、丙和丁。然后结束。")
+    assert turns == ["先做甲；再做乙、丙和丁。", "然后结束。"]
+
+
+def test_chunk_splits_at_boundary_never_mid_list():
+    text = "甲甲甲；乙乙乙。丙丙丙。"
+    chunks = voice_engine._chunk(text, len, max_tokens=8)
+    assert "".join(chunks) == text
+    assert all(len(c) <= 8 for c in chunks)
