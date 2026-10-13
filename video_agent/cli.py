@@ -94,7 +94,7 @@ def main(argv=None) -> int:
     m.add_argument("article")
     m.add_argument("--aspect", default="both", choices=["916", "169", "both"])
     m.add_argument("--max-seconds", type=float, default=None)
-    m.add_argument("--voice", default="zh-CN-XiaoxiaoNeural")
+    m.add_argument("--voice", default="zf_001")
     m.add_argument("--subtitle", action="store_true")
     m.add_argument("--voiceover-only", action="store_true")
     a = p.parse_args(argv)

@@ -13,13 +13,9 @@ def ffmpeg_path() -> str:
     return cand if os.path.exists(cand) else "ffmpeg"
 
 
-def synth_segment(text: str, out_path: str, voice: str) -> None:
-    import asyncio
-    import edge_tts
-
-    async def _run():
-        await edge_tts.Communicate(text, voice).save(out_path)
-    asyncio.run(_run())
+def synth_segment(text: str, out_path: str, voice: str, speed: float = 1.0) -> None:
+    from .voice_engine import synthesize
+    synthesize(text, out_path, voice, speed=speed)
 
 
 def probe_duration(path: str) -> float:
@@ -33,7 +29,8 @@ def probe_duration(path: str) -> float:
 
 
 def render_voiceover(narration: Narration, out_dir: str, voice: str,
-                     synth=synth_segment, probe=probe_duration, retries: int = 2) -> list[float]:
+                     synth=synth_segment, probe=probe_duration, retries: int = 2,
+                     speed: float = 1.0) -> list[float]:
     os.makedirs(out_dir, exist_ok=True)
     durations = []
     for seg in narration.segments:
@@ -42,7 +39,7 @@ def render_voiceover(narration: Narration, out_dir: str, voice: str,
         ok = False
         for _ in range(retries + 1):
             try:
-                synth(seg.text, path, voice)
+                synth(seg.text, path, voice, speed=speed)
                 durations.append(probe(path))
                 ok = True
                 break
