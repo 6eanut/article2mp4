@@ -61,6 +61,7 @@ video_agent/
   render.py         ⑤ dispatch type → template; build the Manim Scene
   compose.py        ⑥ ffmpeg concat, mux, A/V sync assertion, audio trim
   style.py          design tokens (font, colours, chip/tick primitives)
+  progress.py       human-readable per-stage progress lines
   templates/        twelve scene templates, one file per type + entrance_hold helper
   prompts/          script.md, scene.md — the LLM prompts (editable, not code)
 tests/              offline pytest suite
@@ -110,13 +111,16 @@ falls back to a character-count estimate when audio duration is unavailable.
 ### `render.py`
 Sets up Manim's frame to match the target canvas ratio, then renders each shot
 by dispatching `type` to `templates.render_scene`. A shot whose template raises
-is **degraded** to a plain text card and rendering continues.
+is **degraded** to a plain text card and rendering continues. Every template
+scales its widest element to the safe frame width (`templates/_fit.py`) so long
+CJK text is never clipped in the narrow 9:16 frame.
 
 ### `compose.py`
 ffmpeg glue: `concat_voiceover()` joins per-segment audio (optionally inserting a
 breathing `gap`), `mux()` lays narration + BGM under the silent video,
 `assert_av_sync()` fails if audio and video durations drift beyond a tolerance,
-and `trim_audio()` pads/trims to an exact length.
+and `trim_audio()` pads/trims to an exact length. `concat_voiceover()` applies
+ffmpeg `loudnorm` (-14 LUFS) so the narration is loud and clear on playback.
 
 ## Data contracts
 

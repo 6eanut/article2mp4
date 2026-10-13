@@ -83,11 +83,11 @@ Each template declares two phases:
 
 ### Subtitles
 
-Subtitles are an **optional, toggleable overlay**, **off by default**, enabled
-with `--subtitle`. The content is the narration sentence for that shot, shown in
+Subtitles are a **toggleable overlay, on by default**, disabled with
+`--no-subtitle`. The content is the narration sentence for that shot, shown in
 sync with it. It is a **cross-cutting template capability** shared by all twelve
 types, not a feature of one type. Motivation: short vertical videos are widely
-watched on mute, so on-screen text is close to standard.
+watched on mute, so on-screen text is close to standard — so it ships on.
 
 ### Speech rate
 

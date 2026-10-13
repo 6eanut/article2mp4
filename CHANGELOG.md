@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Subtitles now default to **on** (`--no-subtitle` disables them).
+- Template text scales to fit the frame, preventing clipped or overlapping text
+  in the 9:16 output.
+
+### Fixed
+
+- Narration no longer breaks mid-sentence at enumeration commas (`、`).
+- Voiceover loudness normalized to -14 LUFS for clearer playback.
+
+### Added
+
+- Human-readable per-stage progress output; Manim's progress bar is muted.
+
 ## [0.1.0] - 2026-10-13
 
 ### Added

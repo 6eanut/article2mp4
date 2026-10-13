@@ -26,7 +26,7 @@ Markdown article  ──▶  LLM narration  ──▶  LLM scene spec  ──▶
 - **Narration-driven timing.** Each shot's duration comes from its own audio; the
   animation adapts to the voice, not the other way around.
 - **Dual aspect ratios.** 9:16 (1080×1920) and 16:9 (1920×1080) in a single run.
-- **Optional subtitles and background music.**
+- **Subtitles on by default** (disable with `--no-subtitle`) **and background music.**
 - **Minimal configuration.** The only settings are your LLM's URL, API key, and model.
 
 ## Requirements
@@ -84,7 +84,7 @@ python -m video_agent make <article.md> [options]
 | `--aspect {916,169,both}` | Which aspect ratio(s) to render | `both` |
 | `--max-seconds N` | Soft cap: keep whole shots from the front until `N` seconds | no limit |
 | `--voice ID` | Kokoro voice id (e.g. `zf_001`) | `zf_001` |
-| `--subtitle` | Burn the narration in as subtitles | off |
+| `--subtitle` / `--no-subtitle` | Burn the narration in as subtitles | on |
 | `--voiceover-only` | Generate narration audio only, skip rendering | off |
 
 ## How it works
