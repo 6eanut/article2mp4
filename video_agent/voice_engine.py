@@ -39,19 +39,19 @@ def _download(name: str) -> str:
             length = resp.headers.get("Content-Length")
             if length:
                 if len(blob) != int(length):
-                    raise OSError("下载被截断（字节数不匹配）")
+                    raise OSError("download truncated (byte count mismatch)")
             elif len(blob) == 0:
-                raise OSError("下载为空")
+                raise OSError("download is empty")
             with open(tmp, "wb") as f:
                 f.write(blob)
             os.replace(tmp, dst)
             return dst
-        except Exception as e:  # 试下一个代理
+        except Exception as e:  # try the next proxy
             last = e
         finally:
             if os.path.exists(tmp):
                 os.remove(tmp)
-    raise RuntimeError(f"下载模型 {name} 失败（所有镜像不可用）: {last}")
+    raise RuntimeError(f"failed to download model {name} (all mirrors unavailable): {last}")
 
 
 def ensure_models(progress=None) -> None:

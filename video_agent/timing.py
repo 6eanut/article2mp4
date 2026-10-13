@@ -11,8 +11,10 @@ def align_durations(audio_durations, gap: float = GAP):
 
 
 def fit_total(audio_durations, limit):
-    """软上限：从头保留完整镜头，直到再加一段就超过 limit；返回保留的段数。
-    若连第一段都超过 limit，至少保留一段（不硬压、不截断旁白）。"""
+    """Soft cap: keep whole shots from the front until adding one more would
+    exceed ``limit``, and return how many were kept. If even the first shot
+    exceeds ``limit``, keep at least one (never squeeze or cut the narration
+    mid-sentence)."""
     if not limit or limit <= 0:
         return len(audio_durations)
     total = 0.0

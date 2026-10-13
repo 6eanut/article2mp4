@@ -20,8 +20,8 @@ def generate_narration(article_md: str, client: LLMClient) -> Narration:
     try:
         raw = client.chat_json(messages, retries=2)
     except LLMError as e:
-        raise LLMError(f"口播稿生成失败: {e}")
+        raise LLMError(f"narration generation failed: {e}")
     try:
         return Narration(**raw)
     except ValidationError as e:
-        raise LLMError(f"口播稿格式不合法: {str(e).splitlines()[0][:200]}")
+        raise LLMError(f"narration format is invalid: {str(e).splitlines()[0][:200]}")

@@ -21,7 +21,7 @@ class Settings:
     def from_env(cls, env: dict) -> "Settings":
         missing = [k for k in ("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL") if not env.get(k)]
         if missing:
-            raise ValueError(f"缺少配置: {', '.join(missing)}（请在 .env 中设置）")
+            raise ValueError(f"missing configuration: {', '.join(missing)} (set it in .env)")
         return cls(env["LLM_BASE_URL"], env["LLM_API_KEY"], env["LLM_MODEL"])
 
 

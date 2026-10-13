@@ -9,7 +9,8 @@ def build_concat_file(ids, audio_dir) -> str:
 
 
 def build_concat_filter(n: int, gap: float) -> str:
-    """每个输入后补 gap 秒静音，再顺序拼接（制作‘呼吸停顿’）。"""
+    """Append ``gap`` seconds of silence after each input, then concatenate in
+    order (creating a "breathing pause")."""
     pad = "".join(f"[{k}:a]apad=pad_dur={gap}[a{k}];" for k in range(n))
     join = "".join(f"[a{k}]" for k in range(n))
     return f"{pad}{join}concat=n={n}:v=0:a=1[out]"
@@ -55,11 +56,12 @@ def mux(video_path, audio_path, bgm_path, out_path) -> str:
 
 def assert_av_sync(video_dur: float, audio_dur: float, tol: float = 0.3) -> None:
     assert abs(video_dur - audio_dur) <= tol, \
-        f"音画时长偏差过大: video={video_dur:.2f}s audio={audio_dur:.2f}s tol={tol}"
+        f"audio/video duration drift too large: video={video_dur:.2f}s audio={audio_dur:.2f}s tol={tol}"
 
 
 def trim_audio(in_path, seconds, out_path=None) -> str:
-    """把音频裁/补齐到 seconds（pad 到等长，避免 mux 的 -shortest 吃掉尾巴）。"""
+    """Trim/pad the audio to ``seconds`` (pad to equal length so mux's -shortest
+    does not cut off the tail)."""
     ff = ffmpeg_path()
     out_path = out_path or in_path
     subprocess.run(

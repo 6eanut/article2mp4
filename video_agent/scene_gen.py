@@ -14,7 +14,8 @@ def _scene_ok(sc) -> bool:
 
 
 def _salvage(bad: SceneSpec, narration: Narration) -> SceneSpec:
-    """逐镜校验：好镜头保留 LLM 输出，坏镜头单独降级（不整份丢弃）。"""
+    """Per-shot validation: keep good shots from the LLM output and degrade
+    only the bad ones (instead of discarding the whole storyboard)."""
     scenes = []
     n = len(narration.segments)
     for i, sc in enumerate(bad.scenes):
@@ -58,7 +59,7 @@ def generate_scene_spec(narration: Narration, client: LLMClient) -> SceneSpec:
         return validate_scene_spec(raw, narration)
     except (LLMError, ContractError, ValidationError) as e:
         messages = messages + [{"role": "user",
-                                "content": f"上次输出不合法：{str(e).splitlines()[0][:200]}。请修正后重新只输出 JSON。"}]
+                                "content": f"Your previous output was invalid: {str(e).splitlines()[0][:200]}. Please fix it and output JSON only."}]
         try:
             raw = client.chat_json(messages, retries=1)
             try:

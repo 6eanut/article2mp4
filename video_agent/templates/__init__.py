@@ -3,7 +3,8 @@ from manim import Animation, Wait
 
 
 def entrance_hold(anim, duration: float, min_entrance: float = 0.8) -> list[Animation]:
-    """把入场动画压进 [min_entrance, duration]，末尾补 Wait 填满 duration。"""
+    """Squeeze the entrance animation into [min_entrance, duration], then pad
+    the remainder with a Wait so the total equals ``duration``."""
     anims: list[Animation] = []
     if anim is not None:
         entrance = min(min_entrance, duration)
@@ -17,7 +18,7 @@ def entrance_hold(anim, duration: float, min_entrance: float = 0.8) -> list[Anim
     return anims
 
 
-from . import (  # noqa: E402  (须在 entrance_hold 之后)
+from . import (  # noqa: E402  (must come after entrance_hold is defined)
     title, bullets, closing, section, quote, compare, summary,
     steps, cycle, tree, grid, metric,
 )

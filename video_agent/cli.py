@@ -101,6 +101,6 @@ def main(argv=None) -> int:
     if a.cmd == "make":
         res = run_pipeline(a.article, a.aspect, a.max_seconds, a.voice,
                            a.subtitle, a.voiceover_only)
-        print("完成:", res)
+        print("Done:", res)
         return 0
     return 1

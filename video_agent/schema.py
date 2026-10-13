@@ -4,7 +4,7 @@ from .config import TEMPLATE_TYPES
 
 
 class ContractError(Exception):
-    """分镜 JSON 不符合契约。"""
+    """The storyboard JSON does not satisfy the contract."""
 
 
 class Segment(BaseModel):
@@ -46,7 +46,7 @@ PROPS_REQUIRED: dict[str, list[str]] = {
 }
 
 assert set(PROPS_REQUIRED) == set(TEMPLATE_TYPES), (
-    f"PROPS_REQUIRED keys 与 TEMPLATE_TYPES 不一致: "
+    f"PROPS_REQUIRED keys do not match TEMPLATE_TYPES: "
     f"{set(PROPS_REQUIRED) ^ set(TEMPLATE_TYPES)}"
 )
 
@@ -55,14 +55,14 @@ def validate_scene_spec(raw: dict, narration: Narration) -> SceneSpec:
     spec = SceneSpec(**raw)
     if len(spec.scenes) != len(narration.segments):
         raise ContractError(
-            f"镜头数量({len(spec.scenes)})与旁白段数({len(narration.segments)})不一致"
+            f"shot count ({len(spec.scenes)}) does not match narration segment count ({len(narration.segments)})"
         )
     for i, sc in enumerate(spec.scenes):
         if sc.type not in TEMPLATE_TYPES:
-            raise ContractError(f"未知镜头类型: {sc.type}")
+            raise ContractError(f"unknown shot type: {sc.type}")
         if sc.narration_id != i:
-            raise ContractError(f"scene[{i}].narration_id={sc.narration_id} 应为 {i}")
+            raise ContractError(f"scene[{i}].narration_id={sc.narration_id}, expected {i}")
         missing = [f for f in PROPS_REQUIRED[sc.type] if f not in sc.props]
         if missing:
-            raise ContractError(f"{sc.type} 缺少必填字段: {', '.join(missing)}")
+            raise ContractError(f"{sc.type} is missing required fields: {', '.join(missing)}")
     return spec

@@ -5,7 +5,8 @@ from .schema import Narration
 
 
 def ffmpeg_path() -> str:
-    """优先用环境里的 ffmpeg（.env-mamba/env/bin），否则回退 PATH。"""
+    """Prefer the project's bundled ffmpeg (.env-mamba/env/bin); fall back to
+    whatever is on PATH."""
     cand = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         ".env-mamba", "env", "bin", "ffmpeg",
@@ -43,8 +44,8 @@ def render_voiceover(narration: Narration, out_dir: str, voice: str,
                 durations.append(probe(path))
                 ok = True
                 break
-            except Exception as e:  # 声音失败 = 致命
+            except Exception as e:  # voiceover failure is fatal
                 last = e
         if not ok:
-            raise RuntimeError(f"第 {seg.id} 段配音失败: {last}")
+            raise RuntimeError(f"voiceover for segment {seg.id} failed: {last}")
     return durations

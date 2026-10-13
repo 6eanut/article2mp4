@@ -1,1 +1,1 @@
-"""article2mp4 —— 文章转讲解视频流水线。"""
+"""article2mp4 — turn an article into an explainer video."""

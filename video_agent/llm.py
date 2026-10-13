@@ -45,9 +45,9 @@ class LLMClient:
             else:
                 if isinstance(parsed, dict):
                     return parsed
-                last_err = ValueError(f"期望 JSON 对象，得到 {type(parsed).__name__}")
+                last_err = ValueError(f"expected a JSON object, got {type(parsed).__name__}")
             messages = messages + [
                 {"role": "assistant", "content": raw},
-                {"role": "user", "content": f"输出必须是 JSON 对象（{{...}}），不要数组/标量。错误：{last_err}。只输出 JSON，不要解释。"},
+                {"role": "user", "content": f"Your output must be a JSON object ({{...}}), not an array or scalar. Error: {last_err}. Output JSON only, no explanation."},
             ]
-        raise LLMError(f"无法获得合法 JSON: {last_err}")
+        raise LLMError(f"could not obtain valid JSON: {last_err}")
