@@ -22,10 +22,12 @@ cp .env.example .env
 
 产物在 `output/my_article/`：`my_article_916.mp4`（竖版）与 `my_article_169.mp4`（横版）。
 
-可选开关：`--aspect 916|169`、`--max-seconds 90`、`--voice zh-CN-XiaoxiaoNeural`、
+可选开关：`--aspect 916|169`、`--max-seconds 90`、`--voice zf_001`、
 `--subtitle`、`--voiceover-only`。
+
+首次运行会自动下载约 168MB 的中文语音模型（经 GitHub 镜像）缓存到 `~/.cache/kokoro-zh/`，之后完全离线。
 
 ## 工作原理
 
-文章 →（LLM）口播稿 →（LLM）分镜 JSON →（edge-tts）逐句配音 → 时长对齐 →
+文章 →（LLM）口播稿 →（LLM）分镜 JSON →（kokoro 离线引擎）逐句配音 → 时长对齐 →
 （Manim 12 型模板）渲染 →（ffmpeg）合成。详见 `docs/superpowers/specs/`。
