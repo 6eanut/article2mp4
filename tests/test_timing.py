@@ -9,3 +9,9 @@ def test_estimate_uses_char_count():
 
 def test_estimate_min_floor():
     assert estimate_duration("", chars_per_sec=5.0) >= 0.5
+
+def test_fit_total_keeps_whole_shots_under_limit():
+    from video_agent.timing import fit_total
+    assert fit_total([2.0, 2.0, 2.0], 5.0) == 2   # 3rd would exceed
+    assert fit_total([2.0, 2.0], None) == 2
+    assert fit_total([10.0, 2.0], 5.0) == 1        # at least one

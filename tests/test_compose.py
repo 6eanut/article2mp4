@@ -20,3 +20,12 @@ def test_build_concat_filter_inserts_gap():
     f = build_concat_filter(2, 0.4)
     assert f.count("apad=pad_dur=0.4") == 2
     assert f.endswith("concat=n=2:v=0:a=1[out]")
+
+def test_trim_audio_builds_pad_command(tmp_path, monkeypatch):
+    import video_agent.compose as c
+    called = {}
+    monkeypatch.setattr(c, "ffmpeg_path", lambda: "ffmpeg")
+    monkeypatch.setattr(c.subprocess, "run",
+                        lambda *a, **k: called.update(argv=a[0]))
+    c.trim_audio("in.mp3", 3.0, "out.mp3")
+    assert "-t" in called["argv"] and "apad=whole_dur=3.000" in called["argv"]

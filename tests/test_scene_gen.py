@@ -1,5 +1,5 @@
-from video_agent.scene_gen import generate_scene_spec, fallback_spec
-from video_agent.schema import Narration
+from video_agent.scene_gen import generate_scene_spec, fallback_spec, _salvage
+from video_agent.schema import Narration, SceneSpec
 from video_agent.llm import LLMClient
 from video_agent.config import Settings
 
@@ -31,3 +31,15 @@ def test_generate_wrong_shape_then_fallback():
     spec = generate_scene_spec(NARR, LLMClient(S, transport=lambda m: '{"foo":"bar"}'))
     assert spec.scenes[0].type == "title"
     assert [s.narration_id for s in spec.scenes] == [0, 1, 2]
+
+def test_salvage_keeps_good_and_degrades_bad():
+    bad = SceneSpec(title="T", aspects=["916", "169"], scenes=[
+        {"id": 0, "narration_id": 0, "type": "quote", "props": {"text": "q"}},
+        {"id": 1, "narration_id": 1, "type": "nonexistent", "props": {}},
+        {"id": 2, "narration_id": 2, "type": "closing", "props": {"text": "完"}},
+    ])
+    out = _salvage(bad, NARR)
+    assert out.scenes[0]["type"] == "quote"         # 好镜头保留
+    assert out.scenes[2]["type"] == "closing"       # 好镜头保留
+    assert out.scenes[1]["type"] == "bullets"       # 坏镜头降级
+    assert [s["narration_id"] for s in out.scenes] == [0, 1, 2]
