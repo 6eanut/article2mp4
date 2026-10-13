@@ -6,7 +6,8 @@ from video_agent import voice_engine
                     reason="set KOKORO_SMOKE=1 to download models and run real synthesis")
 def test_real_zh_synthesis(tmp_path):
     import soundfile as sf
-    out = str(tmp_path / "t.wav")
+    # Match the pipeline: writes to a ".mp3" path (WAV content under the hood).
+    out = str(tmp_path / "t.mp3")
     voice_engine.synthesize("大家好，这是一段本地离线语音合成的测试。", out, "zf_001")
     data, sr = sf.read(out)
     assert sr == 24000 and len(data) / sr > 1.0
@@ -30,6 +31,30 @@ def test_synthesize_uses_injected_engine(monkeypatch, tmp_path):
     import soundfile as sf
     data, sr = sf.read(out)
     assert sr == 24000 and len(data) == 2400
+
+def test_synthesize_writes_readable_audio_to_mp3_path(monkeypatch, tmp_path):
+    """Regression: the pipeline writes to f"{seg.id:03d}.mp3" paths (edge-tts era).
+    soundfile must write WAV content there, not infer the MP3 container from the
+    extension (which has no PCM_16 subtype)."""
+    import numpy as np
+    import soundfile as sf
+    class FakeSess:
+        def run(self, _, inp):
+            return [np.sin(np.linspace(0, 500, 4800)).astype(np.float32)]
+    class FakeTok:
+        def tokenize(self, ph): return [1, 2, 3]
+    class FakeK:
+        sess = FakeSess(); tokenizer = FakeTok()
+        def get_voice_style(self, v): return np.zeros((99, 256), np.float32)
+    class FakeG2P:
+        def __call__(self, t): return "ph"
+    monkeypatch.setattr(voice_engine, "_ENGINE", None)
+    monkeypatch.setattr(voice_engine, "_load", lambda: (FakeK(), FakeG2P()))
+    out = str(tmp_path / "000.mp3")
+    voice_engine.synthesize("你好", out, "zf_001")
+    data, sr = sf.read(out)
+    assert sr == 24000 and len(data) == 4800
+    assert open(out, "rb").read(4) == b"RIFF"  # WAV content despite .mp3 name
 
 def test_synthesize_long_text_concatenates_chunks(monkeypatch, tmp_path):
     import numpy as np

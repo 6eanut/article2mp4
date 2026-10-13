@@ -171,5 +171,9 @@ def synthesize(text: str, out_path: str, voice: str, speed: float = 1.0) -> str:
             merged.append(gap)
             merged.append(part)
         audio = np.concatenate(merged)
-    sf.write(out_path, audio, SAMPLE_RATE, subtype="PCM_16")
+    # Force WAV: pipeline paths end in ".mp3" (a remnant of the edge-tts era),
+    # and libsndfile would otherwise infer the MP3 container from the extension,
+    # which has no PCM_16 subtype. ffmpeg detects audio by content, so WAV-in-.mp3
+    # concatenates and muxes fine.
+    sf.write(out_path, audio, SAMPLE_RATE, format="WAV", subtype="PCM_16")
     return out_path
