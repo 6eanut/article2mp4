@@ -7,6 +7,17 @@ from .config import CANVAS, FPS
 from .style import apply_manim_config, FONT, FG
 from .templates import render_scene, entrance_hold
 
+# 逻辑画框宽度取 16:9 的标准宽 14.222（=1920/135），使 9:16 与 16:9 两版
+# 的像素/单位比例一致、模板字号通用；高度按画布比例推出。
+DESIGN_FRAME_WIDTH = 14.222222222222221
+
+
+def frame_dimensions(aspect: str) -> tuple[float, float]:
+    """逻辑画框 (width, height)：宽度固定为设计宽，高度按画布宽高比推出，
+    保证 9:16 与 16:9 两版的像素/单位比例一致，且画框与画布同比（不出现黑边）。"""
+    w, h = CANVAS[aspect]
+    return DESIGN_FRAME_WIDTH, DESIGN_FRAME_WIDTH * h / w
+
 
 def _degrade_shot(scene, duration, subtitle=None):
     props = scene.get("props", {})
@@ -69,6 +80,9 @@ def render_video(spec, durations, aspect, out_dir, subtitle=False, subtitles=Non
     w, h = CANVAS[aspect]
     config.pixel_width = w
     config.pixel_height = h
+    # 逻辑画框必须与目标画布同比，否则 Manim 会按宽度把 16:9 默认画框塞进
+    # 9:16 画布，内容被压在中间一条、左右黑边，to_edge(DOWN) 的字幕也落到画外。
+    config.frame_width, config.frame_height = frame_dimensions(aspect)
     config.frame_rate = FPS
     config.media_dir = os.path.join(out_dir, "media")
     sub_map = {}

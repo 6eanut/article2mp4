@@ -37,3 +37,10 @@ def test_build_subtitle_map_from_narration_sentences():
     spec = {"scenes": [{"id": 0}, {"id": 1}]}
     assert build_subtitle_map(spec, ["甲", "乙"]) == {0: "甲", 1: "乙"}
     assert build_subtitle_map(spec, None) == {}
+
+def test_frame_dimensions_match_canvas_aspect():
+    # 逻辑画框必须与像素画布同比，否则 9:16 会被塞成 16:9 出现黑边、字幕落到画外
+    from video_agent.render import frame_dimensions
+    for aspect, (w, h) in (("916", (1080, 1920)), ("169", (1920, 1080))):
+        fw, fh = frame_dimensions(aspect)
+        assert abs(fw / fh - w / h) < 1e-9
