@@ -1,6 +1,7 @@
 import pytest
-from video_agent.llm import LLMClient, strip_fence, LLMError
+
 from video_agent.config import Settings
+from video_agent.llm import LLMClient, LLMError, strip_fence
 
 S = Settings("u", "k", "m")
 

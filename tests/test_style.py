@@ -1,4 +1,5 @@
-from video_agent.style import FONT, BG, ACCENT, chip, tick, cand_box, apply_manim_config
+from video_agent.style import ACCENT, BG, FONT, apply_manim_config, cand_box, chip, tick
+
 
 def test_tokens():
     assert FONT == "Noto Sans SC"

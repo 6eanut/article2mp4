@@ -23,6 +23,10 @@ Markdown article  ──▶  LLM narration  ──▶  LLM scene spec  ──▶
 - **Twelve scene templates.** Title, section, bullets, steps, cycle, tree, compare,
   grid, metric, quote, summary, and closing layouts, chosen automatically from the
   narration.
+- **Short-video pacing.** The script aims for a strong opening and a complete
+  45–75 second story. Each shot follows its audio with a brief 0.12-second beat.
+- **Clear speech mix.** Lossless narration intermediates receive light speech EQ,
+  compression, and loudness normalization; music ducks under the voice.
 - **Narration-driven timing.** Each shot's duration comes from its own audio; the
   animation adapts to the voice, not the other way around.
 - **Dual aspect ratios.** 9:16 (1080×1920) and 16:9 (1920×1080) in a single run.
@@ -60,9 +64,16 @@ script) via `pip install .`.
 
 ## Quick start
 
+Run the command with the Python environment used for installation. Check that
+`python --version` reports 3.11 or newer; a system `python` may lack Manim even
+when it is installed in the project environment.
+
 ```bash
 python -m video_agent make examples/demo.md
 ```
+
+In a checkout with the preconfigured `.env-mamba` environment, use
+`.env-mamba/env/bin/python -m video_agent make examples/demo.md` directly.
 
 Outputs land in `output/demo/`:
 
@@ -79,13 +90,13 @@ offline.
 python -m video_agent make <article.md> [options]
 ```
 
-| Option | Description | Default |
-| --- | --- | --- |
-| `--aspect {916,169,both}` | Which aspect ratio(s) to render | `both` |
-| `--max-seconds N` | Soft cap: keep whole shots from the front until `N` seconds | no limit |
-| `--voice ID` | Kokoro voice id (e.g. `zf_001`) | `zf_001` |
-| `--subtitle` / `--no-subtitle` | Burn the narration in as subtitles | on |
-| `--voiceover-only` | Generate narration audio only, skip rendering | off |
+| Option                             | Description                                                                                   | Default    |
+| ---------------------------------- | --------------------------------------------------------------------------------------------- | ---------- |
+| `--aspect {916,169,both}`        | Which aspect ratio(s) to render                                                               | `both`   |
+| `--max-seconds N`                | Soft cap: request a complete shorter script; retain opening and conclusion if audio runs long | no limit   |
+| `--voice ID`                     | Kokoro voice id (e.g.`zf_001`)                                                              | `zf_001` |
+| `--subtitle` / `--no-subtitle` | Burn the narration in as subtitles                                                            | on         |
+| `--voiceover-only`               | Generate narration audio only, skip rendering                                                 | off        |
 
 ## How it works
 

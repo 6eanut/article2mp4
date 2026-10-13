@@ -1,7 +1,15 @@
 from __future__ import annotations
+
 import numpy as np
 from manim import (
-    VGroup, Text, RoundedRectangle, Line, Cross, DOWN, BOLD, config,
+    BOLD,
+    DOWN,
+    Cross,
+    Line,
+    RoundedRectangle,
+    Text,
+    VGroup,
+    config,
 )
 
 FONT = "Noto Sans SC"

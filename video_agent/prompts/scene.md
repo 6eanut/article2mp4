@@ -17,6 +17,8 @@ Rules:
 - The shot count must be **exactly equal** to the narration segment count, and scenes[i].narration_id must equal i.
 - Use title for the first segment and closing for the last.
 - Choose the visual type that best fits the content.
+- Keep each shot visually simple: one focal idea, short labels, and at most 2–3 items. Summarize the narration in the props rather than copying a whole sentence into multiple fields.
+- Vary the visual structure when it helps explain the ideas; avoid consecutive near-identical text cards.
 - Write all scene text in the SAME language as the narration.
 
 Output JSON only:

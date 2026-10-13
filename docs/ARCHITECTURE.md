@@ -13,6 +13,7 @@ article.md
    │
    ▼
 ① Narration     LLM call #1      article → spoken script, split into N segments
+                 optional retry    shorten drafts estimated over 78 seconds
    │                             produces narration.json   [{id, text}, ...]
    ▼
 ② Scene spec    LLM call #2      narration + template catalogue → scene JSON
@@ -20,7 +21,7 @@ article.md
    │                             (schema-validated, retried, with a fallback)
    ▼
 ③ Voiceover     offline TTS      one audio file per segment; ffprobe reads each real duration
-   │                             produces audio/NNN.mp3 + durations
+   │                             produces audio/NNN.wav + durations
    ▼
 ④ Alignment     pure Python      write each duration back onto its shot
    │                             (no model calls — deterministic)
@@ -33,7 +34,8 @@ article.md
                                  (+ optional subtitles) → output/<name>/<name>_916.mp4, _169.mp4
 ```
 
-**The model appears only in stages ① and ②.** Everything from ③ onward is
+**The model appears only in stages ① and ②.** Stage ① may make one extra
+condensing call for an overlong draft. Everything from ③ onward is
 deterministic computation: reproducible, offline, and free.
 
 Two consequences are worth calling out:
@@ -88,9 +90,13 @@ strips code fences, parses JSON, requires an object (not array/scalar), and on
 failure appends the error back to the conversation and retries.
 
 ### `script_gen.py` / `scene_gen.py`
-Stage ① and ②. Each loads its prompt file and asks the model for one JSON
-document. `scene_gen` is the guarded stage: it validates against `schema.py`,
+Stage ① and ②. Each loads its prompt file and asks the model for JSON.
+`script_gen` requests one shorter revision when the first draft exceeds the
+short-video budget, retaining the original if revision fails. `scene_gen`
+validates against `schema.py`,
 retries once with the error message, then falls back gracefully (see below).
+The generated `narration.json` is saved before TTS so a failed voiceover can be
+diagnosed from the exact sentence that caused it.
 
 ### `schema.py`
 The contracts. `Narration` and `SceneSpec` are pydantic models;
@@ -104,8 +110,8 @@ one-time model download with mirror fallback and integrity checks, sentence
 chunking under the tokenizer limit, and writing 24 kHz PCM audio.
 
 ### `timing.py`
-`align_durations()` adds the inter-shot `GAP`; `fit_total()` applies the soft
-`--max-seconds` cap by keeping whole shots from the front; `estimate_duration()`
+`align_durations()` adds the inter-shot `GAP`; `fit_complete_indices()` applies
+the soft `--max-seconds` cap while retaining the opening and conclusion; `estimate_duration()`
 falls back to a character-count estimate when audio duration is unavailable.
 
 ### `render.py`
@@ -116,11 +122,11 @@ scales its widest element to the safe frame width (`templates/_fit.py`) so long
 CJK text is never clipped in the narrow 9:16 frame.
 
 ### `compose.py`
-ffmpeg glue: `concat_voiceover()` joins per-segment audio (optionally inserting a
-breathing `gap`), `mux()` lays narration + BGM under the silent video,
+ffmpeg glue: `concat_voiceover()` joins lossless per-segment audio with a brief
+`0.12`-second beat, `mux()` ducks BGM under narration and encodes AAC,
 `assert_av_sync()` fails if audio and video durations drift beyond a tolerance,
 and `trim_audio()` pads/trims to an exact length. `concat_voiceover()` applies
-ffmpeg `loudnorm` (-14 LUFS) so the narration is loud and clear on playback.
+speech EQ, gentle compression, and `loudnorm` (-14 LUFS) for clear playback.
 
 ## Data contracts
 
@@ -227,7 +233,7 @@ directly at the stage that broke.
 output/<article-name>/
   narration.json          stage ① output (readable, editable)
   scene_spec.json         stage ② output
-  audio/000.mp3 …         stage ③ output (one file per segment)
+  audio/000.wav …         stage ③ output (one file per segment)
   <name>_916.mp4          vertical
   <name>_169.mp4          horizontal
 ```

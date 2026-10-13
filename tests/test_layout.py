@@ -1,5 +1,8 @@
-from manim import Text, VGroup, DOWN
-from video_agent.templates._fit import fit_width, fit_group, FRAME_SAFE_WIDTH
+import pytest
+from manim import DOWN, Text, VGroup
+
+from video_agent.templates import render_scene
+from video_agent.templates._fit import FRAME_SAFE_WIDTH, fit_group, fit_width, wrapped_text
 
 
 def test_fit_width_shrinks_oversized_text():
@@ -30,8 +33,21 @@ def test_frame_safe_width_is_below_design_width():
     assert 0 < FRAME_SAFE_WIDTH < DESIGN_FRAME_WIDTH
 
 
-import pytest
-from video_agent.templates import render_scene
+def test_wrapped_cjk_preserves_readable_size_and_all_characters():
+    source = "这是一条非常非常长的要点内容用来测试竖屏下的文字换行与阅读体验"
+    text = wrapped_text(source, max_width=5.0, font_size=30)
+    assert text.width <= 5.0 + 1e-6
+    assert "\n" in text.original_text
+    assert text.original_text.replace("\n", "") == source
+    assert text.height > Text("短句", font_size=30).height * 1.5
+
+
+def test_wrapped_english_uses_word_boundaries():
+    source = "Good typography makes short videos easier to follow"
+    text = wrapped_text(source, max_width=4.2, font_size=30)
+    assert text.width <= 4.2 + 1e-6
+    assert text.original_text.replace("\n", " ") == source
+
 
 FILLER = "超长标题超长标题超长标题超长标题超长标题超长标题"
 LONG = "这是一条非常非常长的要点内容用来测试竖屏下会不会被截断掉"
@@ -62,3 +78,23 @@ def test_template_content_fits_frame(t, props, dur):
         m = getattr(a, "mobject", None)
         if m is not None:
             assert m.width <= FRAME_SAFE_WIDTH + 1e-6, f"{t} overflows: {m.width}"
+
+
+def _text_descendants(mobject):
+    if isinstance(mobject, Text):
+        return [mobject]
+    return [text for child in mobject.submobjects
+            for text in _text_descendants(child)]
+
+
+@pytest.mark.parametrize("t,props,dur", CASES)
+def test_long_template_text_boxes_do_not_overlap(t, props, dur):
+    body = render_scene(t, props, duration=dur)[0].mobject
+    texts = _text_descendants(body)
+    for i, first in enumerate(texts):
+        for second in texts[i + 1:]:
+            overlap_x = min(first.get_right()[0], second.get_right()[0]) - max(
+                first.get_left()[0], second.get_left()[0])
+            overlap_y = min(first.get_top()[1], second.get_top()[1]) - max(
+                first.get_bottom()[1], second.get_bottom()[1])
+            assert overlap_x <= 0.08 or overlap_y <= 0.08, f"{t} text boxes overlap"

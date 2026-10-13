@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import os
 import subprocess
+
 from .schema import Narration
 
 
@@ -35,7 +37,7 @@ def render_voiceover(narration: Narration, out_dir: str, voice: str,
     os.makedirs(out_dir, exist_ok=True)
     durations = []
     for seg in narration.segments:
-        path = os.path.join(out_dir, f"{seg.id:03d}.mp3")
+        path = os.path.join(out_dir, f"{seg.id:03d}.wav")
         last = None
         ok = False
         for _ in range(retries + 1):
@@ -47,5 +49,8 @@ def render_voiceover(narration: Narration, out_dir: str, voice: str,
             except Exception as e:  # voiceover failure is fatal
                 last = e
         if not ok:
-            raise RuntimeError(f"voiceover for segment {seg.id} failed: {last}")
+            preview = seg.text[:60]
+            if len(seg.text) > 60:
+                preview += "…"
+            raise RuntimeError(f"voiceover for segment {seg.id} ({preview!r}) failed: {last}")
     return durations

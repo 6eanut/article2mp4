@@ -58,7 +58,7 @@ animation was hard-coded to pause for three. The timing is honest by
 construction.
 
 **Core formula:** `shot_i duration = audio_i duration + gap`, where `gap` is a
-breathing pause between shots (default 0.4 s).
+brief beat between shots (default 0.12 s).
 
 ### How a template "eats" a number of seconds
 
@@ -120,18 +120,22 @@ phonetically. The narration language therefore follows the source article, and
 for Chinese input the result is natural Chinese speech. Supporting another
 language would mean swapping the model.
 
-Three integration details worth recording:
+Four integration details worth recording:
 
 1. The `zh` ONNX export expects a **float32** `speed` tensor, whereas the wrapper
    passes int32; the engine calls `sess.run` directly to control the dtype.
 2. The tokenizer has a hard limit of about 510 phonemes, so long text is split on
    sentence boundaries (and hard-split by characters when a single sentence is too
    long), then concatenated with a short silence between chunks.
-3. Model paths end in `.mp3` as a historical remnant of the `edge-tts` era, but the
-   audio is written as **WAV**. This is intentional: libsndfile infers the
-   container from the file extension, and MP3 has no `PCM_16` subtype, which would
-   raise "Invalid combination of format, subtype and endian". ffmpeg detects audio
-   by content, so WAV-in-`.mp3` concatenates and muxes fine.
+3. Segment paths end in `.wav` and contain 24 kHz PCM. The narration stays
+   lossless until the final AAC encode. Speech EQ, compression, and loudness
+   normalization improve intelligibility; background music ducks under speech.
+4. Misaki checks the first character before its internal number conversion.
+   A sentence starting with Arabic digits can therefore route later punctuation
+   through the wrong phoneme parser. The engine normalizes spoken numbers before
+   calling Misaki and treats hyphens in model versions such as `GLM-5.2` as
+   separators rather than negative signs. The written narration retains its
+   original numbers.
 
 ## Failure philosophy
 

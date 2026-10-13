@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import urllib.request
 
 import numpy as np
@@ -63,6 +64,7 @@ def ensure_models(progress=None) -> None:
 
 _ENGINE = None
 SAMPLE_RATE = 24000
+_MODEL_VERSION_HYPHEN = re.compile(r"([A-Za-z]{2,}[A-Za-z0-9.]*)-(?=\d)")
 
 # Tokens per sentence separator (approx. consumed by g2p/tokenizer) and
 # tokenizer hard limit. Keep unpacking generously below the 510-row limit.
@@ -184,9 +186,24 @@ def _engine():
     return _ENGINE
 
 
+def _phonemize(g2p, text: str) -> str:
+    """Align Misaki's initial-script check with its number conversion.
+
+    ZHG2P checks the *original* first character, then converts Arabic numbers
+    to Hanzi internally. A leading number therefore makes it parse following
+    punctuation as pinyin. Applying the same conversion first preserves the
+    spoken number while keeping its script detection in sync.
+    """
+    from cn2an import transform
+    # In names such as GLM-5.2 and Qwen3.5-9B, '-' separates versions; cn2an
+    # would otherwise pronounce it as a negative sign ("负").
+    spoken = _MODEL_VERSION_HYPHEN.sub(r"\1 ", text)
+    return g2p(transform(spoken, "an2cn"))
+
+
 def _synthesize_chunk(kokoro, g2p, text: str, voice: str, speed: float) -> np.ndarray:
     """Run the model on a single (in-limit) text chunk and return float32 audio."""
-    ids = kokoro.tokenizer.tokenize(g2p(text))
+    ids = kokoro.tokenizer.tokenize(_phonemize(g2p, text))
     style = kokoro.get_voice_style(voice)[len(ids)]
     inputs = {
         "input_ids": np.array([[0, *ids, 0]], dtype=np.int64),
@@ -198,8 +215,11 @@ def _synthesize_chunk(kokoro, g2p, text: str, voice: str, speed: float) -> np.nd
 
 def synthesize(text: str, out_path: str, voice: str, speed: float = 1.0) -> str:
     import soundfile as sf
+    if not out_path.lower().endswith(".wav"):
+        raise ValueError("synthesized PCM audio requires a .wav output path")
     kokoro, g2p = _engine()
-    count_tokens = lambda s: len(kokoro.tokenizer.tokenize(g2p(s)))
+    def count_tokens(chunk_text):
+        return len(kokoro.tokenizer.tokenize(_phonemize(g2p, chunk_text)))
     chunks = _chunk(text, count_tokens)
     if len(chunks) == 1:
         audio = _synthesize_chunk(kokoro, g2p, chunks[0], voice, speed)
@@ -211,9 +231,6 @@ def synthesize(text: str, out_path: str, voice: str, speed: float = 1.0) -> str:
             merged.append(gap)
             merged.append(part)
         audio = np.concatenate(merged)
-    # Force WAV: pipeline paths end in ".mp3" (a remnant of the edge-tts era),
-    # and libsndfile would otherwise infer the MP3 container from the extension,
-    # which has no PCM_16 subtype. ffmpeg detects audio by content, so WAV-in-.mp3
-    # concatenates and muxes fine.
+    # Keep model output lossless until the final video encode.
     sf.write(out_path, audio, SAMPLE_RATE, format="WAV", subtype="PCM_16")
     return out_path

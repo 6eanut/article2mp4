@@ -1,5 +1,7 @@
 import pytest
-from video_agent.config import Settings, load_settings, CANVAS, TEMPLATE_TYPES
+
+from video_agent.config import CANVAS, TEMPLATE_TYPES, Settings, load_settings
+
 
 def test_from_env_reads_three_keys():
     s = Settings.from_env({

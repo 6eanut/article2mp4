@@ -1,5 +1,7 @@
 import os
+
 import pytest
+
 from video_agent import voice_engine
 
 
@@ -18,8 +20,7 @@ class _FakeResp:
                     reason="set KOKORO_SMOKE=1 to download models and run real synthesis")
 def test_real_zh_synthesis(tmp_path):
     import soundfile as sf
-    # Match the pipeline: writes to a ".mp3" path (WAV content under the hood).
-    out = str(tmp_path / "t.mp3")
+    out = str(tmp_path / "t.wav")
     voice_engine.synthesize("大家好，这是一段本地离线语音合成的测试。", out, "zf_001")
     data, sr = sf.read(out)
     assert sr == 24000 and len(data) / sr > 1.0
@@ -32,7 +33,8 @@ def test_synthesize_uses_injected_engine(monkeypatch, tmp_path):
     class FakeTok:
         def tokenize(self, ph): return [1, 2, 3]
     class FakeK:
-        sess = FakeSess(); tokenizer = FakeTok()
+        sess = FakeSess()
+        tokenizer = FakeTok()
         def get_voice_style(self, v): return np.zeros((99, 256), np.float32)
     class FakeG2P:
         def __call__(self, t): return "ph"
@@ -44,10 +46,7 @@ def test_synthesize_uses_injected_engine(monkeypatch, tmp_path):
     data, sr = sf.read(out)
     assert sr == 24000 and len(data) == 2400
 
-def test_synthesize_writes_readable_audio_to_mp3_path(monkeypatch, tmp_path):
-    """Regression: the pipeline writes to f"{seg.id:03d}.mp3" paths (edge-tts era).
-    soundfile must write WAV content there, not infer the MP3 container from the
-    extension (which has no PCM_16 subtype)."""
+def test_synthesize_writes_readable_pcm_wav(monkeypatch, tmp_path):
     import numpy as np
     import soundfile as sf
     class FakeSess:
@@ -56,17 +55,73 @@ def test_synthesize_writes_readable_audio_to_mp3_path(monkeypatch, tmp_path):
     class FakeTok:
         def tokenize(self, ph): return [1, 2, 3]
     class FakeK:
-        sess = FakeSess(); tokenizer = FakeTok()
+        sess = FakeSess()
+        tokenizer = FakeTok()
         def get_voice_style(self, v): return np.zeros((99, 256), np.float32)
     class FakeG2P:
         def __call__(self, t): return "ph"
     monkeypatch.setattr(voice_engine, "_ENGINE", None)
     monkeypatch.setattr(voice_engine, "_load", lambda: (FakeK(), FakeG2P()))
-    out = str(tmp_path / "000.mp3")
+    out = str(tmp_path / "000.wav")
     voice_engine.synthesize("你好", out, "zf_001")
     data, sr = sf.read(out)
     assert sr == 24000 and len(data) == 4800
-    assert open(out, "rb").read(4) == b"RIFF"  # WAV content despite .mp3 name
+    assert open(out, "rb").read(4) == b"RIFF"
+
+def test_synthesize_rejects_misleading_mp3_extension(tmp_path):
+    with pytest.raises(ValueError, match=".wav"):
+        voice_engine.synthesize("你好", str(tmp_path / "000.mp3"), "zf_001")
+
+
+@pytest.mark.parametrize("text", [
+    "15台电视盒子，跑起大模型。",
+    "26B模型居然能跑在电视盒子上。",
+    "0.39 token/s：AI蠕虫能自己复制。",
+    " 15台电视盒子，跑起大模型。",
+    "“15台电视盒子，跑起大模型。”",
+    "GLM-5.2在5次测试中传遍8个节点。",
+])
+def test_synthesize_chinese_narration_starting_with_number(monkeypatch, tmp_path, text):
+    """Misaki converts initial digits to Hanzi before segmenting, so the input
+    must be normalized before its initial-script detection runs."""
+    import numpy as np
+    from misaki.zh import ZHG2P
+
+    class FakeSess:
+        def run(self, _, inp):
+            return [np.zeros(2400, np.float32)]
+
+    class FakeTok:
+        def tokenize(self, phonemes):
+            assert phonemes
+            return [1, 2, 3]
+
+    class FakeK:
+        sess = FakeSess()
+        tokenizer = FakeTok()
+
+        def get_voice_style(self, voice):
+            return np.zeros((99, 256), np.float32)
+
+    monkeypatch.setattr(voice_engine, "_ENGINE", (FakeK(), ZHG2P()))
+    out = tmp_path / "numbered.wav"
+    assert voice_engine.synthesize(text, str(out), "zf_001") == str(out)
+    assert out.stat().st_size > 44
+
+
+def test_phonemize_preserves_version_numbers_without_negative_reading():
+    assert voice_engine._phonemize(lambda text: text,
+                                    "GLM-5.2和Qwen3.5-9B模型") == (
+        "GLM 五点二和Qwen三点五 九B模型")
+
+
+def test_phonemize_preserves_single_letter_negative_numbers():
+    assert voice_engine._phonemize(lambda text: text, "x-5") == "x负五"
+
+
+def test_phonemize_leaves_non_numeric_text_unchanged():
+    assert voice_engine._phonemize(lambda text: text,
+                                    "AI能自己找设备。") == "AI能自己找设备。"
 
 def test_synthesize_long_text_concatenates_chunks(monkeypatch, tmp_path):
     import numpy as np
@@ -82,7 +137,8 @@ def test_synthesize_long_text_concatenates_chunks(monkeypatch, tmp_path):
         # tokenizer counts by length so max_tokens (500) counts characters.
         def tokenize(self, ph): return list(range(len(ph)))
     class FakeK:
-        sess = FakeSess(); tokenizer = FakeTok()
+        sess = FakeSess()
+        tokenizer = FakeTok()
         def get_voice_style(self, v): return np.zeros((500, 256), np.float32)
     class FakeG2P:
         def __call__(self, t): return t

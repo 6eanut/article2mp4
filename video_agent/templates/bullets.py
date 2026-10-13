@@ -1,13 +1,16 @@
-from manim import FadeIn, VGroup, Text, DOWN, LEFT
-from ..style import FONT, FG, ACCENT
+from manim import DOWN, LEFT, FadeIn, VGroup
+
+from ..style import ACCENT, FG, FONT
 from . import entrance_hold
-from ._fit import fit_width
+from ._fit import fit_width, wrapped_text
 
 
 def render(props, duration, subtitle=None):
-    h = Text(props["heading"], font=FONT, font_size=38, weight="BOLD", color=FG)
+    h = wrapped_text(props["heading"], max_width=11.8, font=FONT,
+                     font_size=38, weight="BOLD", color=FG)
     items = VGroup(*[
-        fit_width(Text(f"· {it}", font=FONT, font_size=30, color=ACCENT[i % len(ACCENT)]))
+        wrapped_text(f"· {it}", max_width=11.3, font=FONT,
+                     font_size=30, color=ACCENT[i % len(ACCENT)])
         for i, it in enumerate(props["items"])
     ]).arrange(DOWN, aligned_edge=LEFT, buff=0.28)
     body = VGroup(fit_width(h), items).arrange(DOWN, buff=0.5)

@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 from pydantic import ValidationError
-from .llm import LLMClient, LLMError
-from .schema import Narration, SceneSpec, validate_scene_spec, ContractError
+
 from .config import TEMPLATE_TYPES
-from .schema import PROPS_REQUIRED
+from .llm import LLMClient, LLMError
+from .schema import PROPS_REQUIRED, ContractError, Narration, SceneSpec, validate_scene_spec
 from .script_gen import load_prompt
 
 
@@ -58,8 +59,13 @@ def generate_scene_spec(narration: Narration, client: LLMClient) -> SceneSpec:
         raw = client.chat_json(messages, retries=2)
         return validate_scene_spec(raw, narration)
     except (LLMError, ContractError, ValidationError) as e:
-        messages = messages + [{"role": "user",
-                                "content": f"Your previous output was invalid: {str(e).splitlines()[0][:200]}. Please fix it and output JSON only."}]
+        messages = messages + [{
+            "role": "user",
+            "content": (
+                f"Your previous output was invalid: {str(e).splitlines()[0][:200]}. "
+                "Please fix it and output JSON only."
+            ),
+        }]
         try:
             raw = client.chat_json(messages, retries=1)
             try:

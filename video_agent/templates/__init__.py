@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 from manim import Animation, Wait
 
 
-def entrance_hold(anim, duration: float, min_entrance: float = 0.8) -> list[Animation]:
+def entrance_hold(anim, duration: float, min_entrance: float = 0.4) -> list[Animation]:
     """Squeeze the entrance animation into [min_entrance, duration], then pad
     the remainder with a Wait so the total equals ``duration``."""
     anims: list[Animation] = []
@@ -19,8 +20,18 @@ def entrance_hold(anim, duration: float, min_entrance: float = 0.8) -> list[Anim
 
 
 from . import (  # noqa: E402  (must come after entrance_hold is defined)
-    title, bullets, closing, section, quote, compare, summary,
-    steps, cycle, tree, grid, metric,
+    bullets,
+    closing,
+    compare,
+    cycle,
+    grid,
+    metric,
+    quote,
+    section,
+    steps,
+    summary,
+    title,
+    tree,
 )
 
 TEMPLATES = {

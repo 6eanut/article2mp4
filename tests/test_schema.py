@@ -1,5 +1,6 @@
 import pytest
-from video_agent.schema import Narration, validate_scene_spec, ContractError
+
+from video_agent.schema import ContractError, Narration, validate_scene_spec
 
 NARR = Narration(title="T", segments=[
     {"id": 0, "text": "first sentence"}, {"id": 1, "text": "second sentence"},
@@ -47,6 +48,6 @@ def test_missing_required_prop_rejected():
         validate_scene_spec(raw, NARR)
 
 def test_props_table_covers_all_template_types():
-    from video_agent.schema import PROPS_REQUIRED
     from video_agent.config import TEMPLATE_TYPES
+    from video_agent.schema import PROPS_REQUIRED
     assert set(PROPS_REQUIRED) == set(TEMPLATE_TYPES)

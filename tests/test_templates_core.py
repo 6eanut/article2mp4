@@ -1,11 +1,18 @@
 import pytest
-from video_agent.templates import TEMPLATES, render_scene, entrance_hold
+
+from video_agent.templates import TEMPLATES, entrance_hold, render_scene
 
 
 def test_entrance_hold_fills_duration():
     anims = entrance_hold(None, duration=3.0, min_entrance=0.8)
     total = sum(a.run_time for a in anims)
     assert abs(total - 3.0) < 1e-6
+
+
+def test_default_entrance_is_brief():
+    from manim import FadeIn, Text
+    anims = entrance_hold(FadeIn(Text("快速进入")), duration=2.0)
+    assert 0.3 <= anims[0].run_time <= 0.45
 
 
 def test_core_three_registered():

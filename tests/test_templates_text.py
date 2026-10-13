@@ -1,4 +1,5 @@
 import pytest
+
 from video_agent.templates import render_scene
 
 CASES = [

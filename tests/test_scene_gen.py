@@ -1,7 +1,7 @@
-from video_agent.scene_gen import generate_scene_spec, fallback_spec, _salvage
-from video_agent.schema import Narration, SceneSpec
-from video_agent.llm import LLMClient
 from video_agent.config import Settings
+from video_agent.llm import LLMClient
+from video_agent.scene_gen import _salvage, fallback_spec, generate_scene_spec
+from video_agent.schema import Narration, SceneSpec
 
 S = Settings("u", "k", "m")
 NARR = Narration(title="T", segments=[{"id": 0, "text": "one"},
@@ -27,7 +27,7 @@ def test_generate_bad_then_fallback():
     assert spec.scenes[0].type == "title"  # fallback
 
 def test_generate_wrong_shape_then_fallback():
-    # Valid JSON but wrong shape (missing scenes): should go retry->fallback, not raise ValidationError
+    # Valid JSON but wrong shape (missing scenes): retry, then fall back.
     spec = generate_scene_spec(NARR, LLMClient(S, transport=lambda m: '{"foo":"bar"}'))
     assert spec.scenes[0].type == "title"
     assert [s.narration_id for s in spec.scenes] == [0, 1, 2]

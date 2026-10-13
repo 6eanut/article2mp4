@@ -1,16 +1,22 @@
-from manim import FadeIn, VGroup, Text, Line, DOWN, UP, RIGHT
-from ..style import FONT, FG, ACCENT
+from manim import DOWN, RIGHT, UP, FadeIn, Line, VGroup
+
+from ..style import ACCENT, FG, FONT
 from . import entrance_hold
-from ._fit import fit_group
+from ._fit import fit_group, wrapped_text
 
 
 def render(props, duration, subtitle=None):
-    h = Text(props["heading"], font=FONT, font_size=38, weight="BOLD", color=ACCENT[0])
-    root = Text(props["root"], font=FONT, font_size=30, color=ACCENT[0]).shift(UP * 1.2)
+    h = wrapped_text(props["heading"], max_width=11.8, font=FONT,
+                     font_size=38, weight="BOLD", color=ACCENT[0])
+    root = wrapped_text(props["root"], max_width=10.0, font=FONT,
+                        font_size=30, color=ACCENT[0]).shift(UP * 1.2)
     kids = VGroup()
+    kid_count = sum(len(row) for row in props["children"])
+    kid_width = min(3.2, max(1.8, 11.0 / max(kid_count, 1) - 0.5))
     for row in props["children"]:
         for c in row:
-            kids.add(Text(c, font=FONT, font_size=24, color=FG))
+            kids.add(wrapped_text(c, max_width=kid_width,
+                                  font=FONT, font_size=24, color=FG))
     kids.arrange(RIGHT, buff=1.0).shift(DOWN * 0.6)
     edges = VGroup(*[Line(root.get_bottom(), k.get_top(), color=ACCENT[2], stroke_width=2)
                      for k in kids])

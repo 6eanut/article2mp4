@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from pydantic import BaseModel
+
 from .config import TEMPLATE_TYPES
 
 
@@ -55,7 +57,8 @@ def validate_scene_spec(raw: dict, narration: Narration) -> SceneSpec:
     spec = SceneSpec(**raw)
     if len(spec.scenes) != len(narration.segments):
         raise ContractError(
-            f"shot count ({len(spec.scenes)}) does not match narration segment count ({len(narration.segments)})"
+            f"shot count ({len(spec.scenes)}) does not match "
+            f"narration segment count ({len(narration.segments)})"
         )
     for i, sc in enumerate(spec.scenes):
         if sc.type not in TEMPLATE_TYPES:

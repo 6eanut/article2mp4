@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import json
 from typing import Callable
+
 from .config import Settings
 
 
@@ -48,6 +50,9 @@ class LLMClient:
                 last_err = ValueError(f"expected a JSON object, got {type(parsed).__name__}")
             messages = messages + [
                 {"role": "assistant", "content": raw},
-                {"role": "user", "content": f"Your output must be a JSON object ({{...}}), not an array or scalar. Error: {last_err}. Output JSON only, no explanation."},
+                {"role": "user", "content": (
+                    "Your output must be a JSON object ({...}), not an array or scalar. "
+                    f"Error: {last_err}. Output JSON only, no explanation."
+                )},
             ]
         raise LLMError(f"could not obtain valid JSON: {last_err}")
