@@ -43,7 +43,7 @@ def mux(video_path, audio_path, bgm_path, out_path) -> str:
         subprocess.run([
             ff, "-y", "-i", video_path, "-i", audio_path, "-i", bgm_path,
             "-filter_complex",
-            "[2:a]volume=0.12,aloop=loop=-1:size=2e9[b];[1:a][b]amix=inputs=2:duration=first[a]",
+            "[2:a]volume=0.12,aloop=loop=-1:size=2e9[b];[1:a][b]amix=inputs=2:duration=first:normalize=0[a]",
             "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-shortest", out_path,
         ], check=True, capture_output=True)
     else:
