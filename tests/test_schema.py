@@ -45,3 +45,8 @@ def test_missing_required_prop_rejected():
     ])
     with pytest.raises(ContractError, match="title"):
         validate_scene_spec(raw, NARR)
+
+def test_props_table_covers_all_template_types():
+    from video_agent.schema import PROPS_REQUIRED
+    from video_agent.config import TEMPLATE_TYPES
+    assert set(PROPS_REQUIRED) == set(TEMPLATE_TYPES)

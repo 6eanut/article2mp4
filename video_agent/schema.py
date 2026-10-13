@@ -45,6 +45,11 @@ PROPS_REQUIRED: dict[str, list[str]] = {
     "closing": ["text"],
 }
 
+assert set(PROPS_REQUIRED) == set(TEMPLATE_TYPES), (
+    f"PROPS_REQUIRED keys 与 TEMPLATE_TYPES 不一致: "
+    f"{set(PROPS_REQUIRED) ^ set(TEMPLATE_TYPES)}"
+)
+
 
 def validate_scene_spec(raw: dict, narration: Narration) -> SceneSpec:
     spec = SceneSpec(**raw)
