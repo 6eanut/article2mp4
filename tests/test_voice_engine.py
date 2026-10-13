@@ -2,6 +2,25 @@ import os
 import pytest
 from video_agent import voice_engine
 
+def test_synthesize_uses_injected_engine(monkeypatch, tmp_path):
+    import numpy as np
+    class FakeSess:
+        def run(self, _, inp):
+            return [np.zeros(2400, np.float32)]  # 0.1s @ 24k
+    class FakeTok:
+        def tokenize(self, ph): return [1, 2, 3]
+    class FakeK:
+        sess = FakeSess(); tokenizer = FakeTok()
+        def get_voice_style(self, v): return np.zeros((99, 256), np.float32)
+    class FakeG2P:
+        def __call__(self, t): return "ph"
+    monkeypatch.setattr(voice_engine, "_load", lambda: (FakeK(), FakeG2P()))
+    out = str(tmp_path / "a.wav")
+    voice_engine.synthesize("你好", out, "zf_001")
+    import soundfile as sf
+    data, sr = sf.read(out)
+    assert sr == 24000 and len(data) == 2400
+
 def test_synthesize_defaults_and_signature():
     import inspect
     sig = inspect.signature(voice_engine.synthesize)
