@@ -11,15 +11,16 @@ from .timing import align_durations, GAP, fit_total
 from .tts import render_voiceover, probe_duration
 from .render import render_video
 from .compose import concat_voiceover, mux, assert_av_sync, trim_audio
+from . import progress as prog
 
 
 def _default_deps():
     def _client():
         return LLMClient(load_settings())
 
-    def _render(spec, durations, aspect, out_dir, subtitle, subtitles=None):
+    def _render(spec, durations, aspect, out_dir, subtitle, subtitles=None, progress=None):
         return render_video(spec, durations, aspect, out_dir,
-                            subtitle=subtitle, subtitles=subtitles)
+                            subtitle=subtitle, subtitles=subtitles, progress=progress)
 
     def _voiceover(narration, out_dir, voice):
         return render_voiceover(narration, out_dir, voice)
@@ -40,8 +41,10 @@ def _default_deps():
 
 
 def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
-                 voiceover_only, out_dir=None, deps=None):
+                 voiceover_only, out_dir=None, deps=None, progress_enabled=True):
     deps = deps or _default_deps()
+    prog.ENABLED = progress_enabled
+    TOTAL = 6
     name = os.path.splitext(os.path.basename(article_path))[0]
     out_dir = out_dir or os.path.join("output", name)
     os.makedirs(out_dir, exist_ok=True)
@@ -49,12 +52,16 @@ def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
     with open(article_path, encoding="utf-8") as f:
         article = f.read()
     client = deps["client"]()
+    prog.stage(1, TOTAL, "Narration")
     narration = deps["script_gen"](article, client)
+    prog.detail(f"{len(narration.segments)} segments")
     with open(os.path.join(out_dir, "narration.json"), "w", encoding="utf-8") as f:
         json.dump(json.loads(narration.model_dump_json()), f, ensure_ascii=False, indent=2)
 
     audio_dir = os.path.join(out_dir, "audio")
+    prog.stage(3, TOTAL, "Voiceover")
     durations = deps["voiceover"](narration, audio_dir, voice)
+    prog.detail(f"{len(durations)} audio files")
     trim_to = None
     if max_seconds:
         k = fit_total(durations, max_seconds)
@@ -68,26 +75,33 @@ def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
 
     subtitles = [s.text for s in narration.segments] if subtitle else None
 
+    prog.stage(2, TOTAL, "Scene spec")
     spec = deps["scene_gen"](narration, client)
+    prog.detail(f"{len(spec.scenes)} scenes")
     with open(os.path.join(out_dir, "scene_spec.json"), "w", encoding="utf-8") as f:
         json.dump(json.loads(spec.model_dump_json()), f, ensure_ascii=False, indent=2)
 
+    prog.stage(4, TOTAL, "Align")
     shot = align_durations(durations)
     bgm = os.path.join("assets", "bgm", "track.mp3")
     aspects = ["916", "169"] if aspect == "both" else [aspect]
     result = {}
     for asp in aspects:
+        prog.stage(5, TOTAL, f"Render ({asp})")
         video = deps["render"](json.loads(spec.model_dump_json()), shot, asp,
-                               out_dir, subtitle, subtitles)
+                               out_dir, subtitle, subtitles,
+                               progress=lambda done, n: prog.detail(f"scene {done + 1}/{n}"))
+        prog.stage(6, TOTAL, f"Compose ({asp})")
         result[asp] = deps["compose"](
             video=video, audio_dir=audio_dir, narration=narration, out_dir=out_dir,
             name=name, aspect=asp, bgm=bgm, trim_to=trim_to,
         )
+        prog.detail(os.path.basename(result[asp]))
     return {"video": result[aspect] if aspect in result else next(iter(result.values())),
             "all": result}
 
 
-def main(argv=None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="video_agent")
     sub = p.add_subparsers(dest="cmd", required=True)
     m = sub.add_parser("make")
@@ -95,12 +109,16 @@ def main(argv=None) -> int:
     m.add_argument("--aspect", default="both", choices=["916", "169", "both"])
     m.add_argument("--max-seconds", type=float, default=None)
     m.add_argument("--voice", default="zf_001")
-    m.add_argument("--subtitle", action="store_true")
+    m.add_argument("--subtitle", action=argparse.BooleanOptionalAction, default=True,
+                   help="burn the narration in as subtitles (default: on)")
     m.add_argument("--voiceover-only", action="store_true")
-    a = p.parse_args(argv)
+    return p
+
+
+def main(argv=None) -> int:
+    a = build_parser().parse_args(argv)
     if a.cmd == "make":
-        res = run_pipeline(a.article, a.aspect, a.max_seconds, a.voice,
-                           a.subtitle, a.voiceover_only)
-        print("Done:", res)
+        run_pipeline(a.article, a.aspect, a.max_seconds, a.voice,
+                     a.subtitle, a.voiceover_only)
         return 0
     return 1

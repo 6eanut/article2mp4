@@ -16,7 +16,7 @@ def test_run_pipeline_writes_intermediates(tmp_path):
     deps = dict(
         script_gen=lambda md, client: NARR,
         scene_gen=lambda n, client: _spec(),
-        render=lambda sp, dur, asp, o, sub, subs=None: f"{o}/silent_{asp}.mp4",
+        render=lambda sp, dur, asp, o, sub, subs=None, progress=None: f"{o}/silent_{asp}.mp4",
         voiceover=lambda n, o, voice: [2.4, 2.4],
         compose=lambda **k: f"{k['out_dir']}/{k['name']}_{k['aspect']}.mp4",
         client=lambda: object(),
@@ -47,7 +47,7 @@ def test_run_pipeline_passes_subtitles(tmp_path):
     art = tmp_path / "a.md"; art.write_text("# hi", encoding="utf-8")
     out = tmp_path / "out"
     seen = {}
-    def render(sp, dur, asp, o, sub, subs=None):
+    def render(sp, dur, asp, o, sub, subs=None, progress=None):
         seen["subs"] = subs
         return f"{o}/silent_{asp}.mp4"
     deps = dict(
@@ -73,7 +73,7 @@ def test_max_seconds_trims_shots_and_audio(tmp_path):
     deps = dict(
         script_gen=lambda md, client: NARR,
         scene_gen=lambda n, client: _spec(),
-        render=lambda sp, dur, asp, o, sub, subs=None: f"{o}/silent_{asp}.mp4",
+        render=lambda sp, dur, asp, o, sub, subs=None, progress=None: f"{o}/silent_{asp}.mp4",
         voiceover=lambda n, o, voice: [2.4, 2.4],
         compose=compose, client=lambda: object(),
     )
@@ -81,3 +81,26 @@ def test_max_seconds_trims_shots_and_audio(tmp_path):
                  subtitle=False, voiceover_only=False, out_dir=str(out), deps=deps)
     assert len(seen["narration"].segments) == 1   # only shot 0 fits under 3.0
     assert seen["trim_to"] == 2.4 + 0.4           # 2.8
+
+def test_run_pipeline_reports_progress(tmp_path, capsys):
+    art = tmp_path / "a.md"; art.write_text("# hi", encoding="utf-8")
+    out = tmp_path / "out"
+    deps = dict(
+        script_gen=lambda md, client: NARR,
+        scene_gen=lambda n, client: _spec(),
+        render=lambda sp, dur, asp, o, sub, subs=None, progress=None: f"{o}/silent_{asp}.mp4",
+        voiceover=lambda n, o, voice: [2.4, 2.4],
+        compose=lambda **k: f"{k['out_dir']}/{k['name']}_{k['aspect']}.mp4",
+        client=lambda: object(),
+    )
+    run_pipeline(str(art), aspect="916", max_seconds=None, voice="v",
+                 subtitle=True, voiceover_only=False, out_dir=str(out), deps=deps)
+    out_text = capsys.readouterr().out
+    assert "[1/6] Narration" in out_text
+    assert "[6/6] Compose" in out_text
+
+
+def test_default_subtitle_option_is_on():
+    from video_agent.cli import build_parser
+    assert build_parser().parse_args(["make", "a.md"]).subtitle is True
+    assert build_parser().parse_args(["make", "a.md", "--no-subtitle"]).subtitle is False

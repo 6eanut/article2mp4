@@ -60,11 +60,16 @@ class ExplainSpec(Scene):
     SCENES: list = []
     DURATIONS: list = []
     SUBTITLE_MAP: dict = {}
+    PROGRESS = None       # callable(done, total) or None
+    _DONE: int = 0
 
     def construct(self):
         for (_, anims), sc in zip(
             build_scene_sequence(self.SCENES, self.DURATIONS, None), self.SCENES
         ):
+            if self.PROGRESS is not None:
+                self.PROGRESS(self._DONE, len(self.SCENES))
+            self._DONE += 1
             text = self.SUBTITLE_MAP.get(sc["id"])
             if text:
                 self.add(_caption(text))
@@ -73,8 +78,13 @@ class ExplainSpec(Scene):
             self.clear()
 
 
-def render_video(spec, durations, aspect, out_dir, subtitle=False, subtitles=None):
+def render_video(spec, durations, aspect, out_dir, subtitle=False, subtitles=None,
+                 progress=None):
     apply_manim_config()
+    # Mute Manim's startup banner, per-animation INFO lines, and tqdm bar so the
+    # pipeline's own progress output is the primary, readable signal.
+    config.verbosity = "ERROR"
+    config.progress_bar = "none"
     w, h = CANVAS[aspect]
     config.pixel_width = w
     config.pixel_height = h
@@ -95,6 +105,8 @@ def render_video(spec, durations, aspect, out_dir, subtitle=False, subtitles=Non
     ExplainSpec.SCENES = spec["scenes"]
     ExplainSpec.DURATIONS = durations
     ExplainSpec.SUBTITLE_MAP = sub_map
+    ExplainSpec.PROGRESS = progress
+    ExplainSpec._DONE = 0
     scene = ExplainSpec()
     scene.render()
     return str(scene.renderer.file_writer.movie_file_path)
