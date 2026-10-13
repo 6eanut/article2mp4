@@ -14,6 +14,7 @@ def test_synthesize_uses_injected_engine(monkeypatch, tmp_path):
         def get_voice_style(self, v): return np.zeros((99, 256), np.float32)
     class FakeG2P:
         def __call__(self, t): return "ph"
+    monkeypatch.setattr(voice_engine, "_ENGINE", None)
     monkeypatch.setattr(voice_engine, "_load", lambda: (FakeK(), FakeG2P()))
     out = str(tmp_path / "a.wav")
     voice_engine.synthesize("你好", out, "zf_001")
@@ -21,7 +22,37 @@ def test_synthesize_uses_injected_engine(monkeypatch, tmp_path):
     data, sr = sf.read(out)
     assert sr == 24000 and len(data) == 2400
 
-def test_synthesize_defaults_and_signature():
+def test_synthesize_long_text_concatenates_chunks(monkeypatch, tmp_path):
+    import numpy as np
+    import soundfile as sf
+    monkeypatch.setattr(voice_engine, "_ENGINE", None)  # clear prior cached engine
+    chunk_len = 2400  # each chunk produces this many samples (0.1s @ 24k)
+    class FakeSess:
+        n = 0
+        def run(self, _, inp):
+            FakeSess.n += 1
+            return [np.ones(chunk_len, np.float32)]
+    class FakeTok:
+        # tokenizer counts by length so max_tokens (500) counts characters.
+        def tokenize(self, ph): return list(range(len(ph)))
+    class FakeK:
+        sess = FakeSess(); tokenizer = FakeTok()
+        def get_voice_style(self, v): return np.zeros((500, 256), np.float32)
+    class FakeG2P:
+        def __call__(self, t): return t
+    monkeypatch.setattr(voice_engine, "_load", lambda: (FakeK(), FakeG2P()))
+
+    # Many short sentences → definitely splits into multiple chunks.
+    long_text = "句子。" * 300  # one sentence fits a chunk; many pack into several
+    out = str(tmp_path / "long.wav")
+    voice_engine.synthesize(long_text, out, "zf_001")
+    data, sr = sf.read(out)
+    assert sr == 24000
+    num_chunks = FakeSess.n
+    assert num_chunks > 1
+    gap = voice_engine._CHUNK_GAP_SAMPLES
+    expected = chunk_len * num_chunks + gap * (num_chunks - 1)
+    assert len(data) == expected
     import inspect
     sig = inspect.signature(voice_engine.synthesize)
     assert list(sig.parameters) == ["text", "out_path", "voice", "speed"]
@@ -30,6 +61,32 @@ def test_synthesize_defaults_and_signature():
 def test_cache_dir_env_override(monkeypatch, tmp_path):
     monkeypatch.setenv("KOKORO_MODEL_DIR", str(tmp_path / "m"))
     assert voice_engine.cache_dir() == str(tmp_path / "m")
+
+def test_chunk_short_text_single_chunk():
+    text = "你好呀。"
+    assert voice_engine._chunk(text, len) == [text]
+
+def test_chunk_long_text_multiple_chunks_preserves_text():
+    # count_tokens = len → max_tokens counts characters.
+    max_tokens = 8
+    sentences = ["第一句", "第二句", "第三句第四句！", "第五句。"]  # len 22 total
+    text = "".join(sentences)
+    assert len(text) > max_tokens
+    chunks = voice_engine._chunk(text, len, max_tokens)
+    assert len(chunks) > 1
+    for c in chunks:
+        assert len(c) <= max_tokens
+    assert "".join(chunks) == text  # punctuation preserved, nothing dropped
+
+def test_chunk_overlong_sentence_hard_split_without_punctuation():
+    max_tokens = 10
+    text = "这是一个非常长没有标点符号的句子需要被硬分割成多个小片段"
+    assert len(text) > max_tokens
+    chunks = voice_engine._chunk(text, len, max_tokens)
+    assert len(chunks) > 1
+    for c in chunks:
+        assert len(c) <= max_tokens
+    assert "".join(chunks) == text
 
 def test_model_files_cover_both_generators():
     assert set(voice_engine.MODEL_FILES) == {"kokoro-v1.1-zh.int8.onnx", "voices-v1.1-zh.bin"}

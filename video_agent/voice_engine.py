@@ -56,6 +56,78 @@ def ensure_models(progress=None) -> None:
 _ENGINE = None
 SAMPLE_RATE = 24000
 
+# Tokens per sentence separator (approx. consumed by g2p/tokenizer) and
+# tokenizer hard limit. Keep unpacking generously below the 510-row limit.
+_MAX_TOKENS = 500
+# Samples of silence (0.05 s @ 24 kHz) inserted between concatenated chunks.
+_CHUNK_GAP_SAMPLES = int(0.05 * SAMPLE_RATE)
+
+# Characters that denote a sentence boundary (punctuation kept attached).
+_SENTENCE_SEP = "。！？；、\n"
+
+
+def _chunk(text: str, count_tokens, max_tokens: int = _MAX_TOKENS) -> list[str]:
+    """Split ``text`` into pieces whose ``count_tokens`` never exceeds ``max_tokens``.
+
+    ``count_tokens(s)`` must return the token count of a string (callers wrap the
+    g2p+tokenizer in a lambda). Sentences are greedily packed on Chinese
+    sentence boundaries (keeping the trailing punctuation). A single sentence
+    longer than the limit is hard-split by characters into fitting pieces.
+    """
+    if not text:
+        return [""]
+    if count_tokens(text) <= max_tokens:
+        return [text]
+
+    sentences = _split_sentences(text)
+    chunks: list[str] = []
+    buf = ""
+    for sent in sentences:
+        if count_tokens(sent) <= max_tokens:
+            if buf and count_tokens(buf + sent) > max_tokens:
+                chunks.append(buf)
+                buf = sent
+            else:
+                buf += sent
+        else:
+            if buf:
+                chunks.append(buf)
+                buf = ""
+            chunks.extend(_hard_split(sent, count_tokens, max_tokens))
+    if buf:
+        chunks.append(buf)
+    return chunks
+
+
+def _split_sentences(text: str) -> list[str]:
+    """Split on Chinese sentence punctuation, keeping the punctuation attached."""
+    parts: list[str] = []
+    cur = ""
+    for ch in text:
+        cur += ch
+        if ch in _SENTENCE_SEP:
+            parts.append(cur)
+            cur = ""
+    if cur:
+        parts.append(cur)
+    return parts
+
+
+def _hard_split(text: str, count_tokens, max_tokens: int) -> list[str]:
+    """Character-level split of a sentence too long to fit in one piece."""
+    if count_tokens(text) <= max_tokens:
+        return [text]
+    pieces: list[str] = []
+    buf = ""
+    for ch in text:
+        if buf and count_tokens(buf + ch) > max_tokens:
+            pieces.append(buf)
+            buf = ""
+        buf += ch
+    if buf:
+        pieces.append(buf)
+    return pieces
+
 
 def _load():
     from kokoro_onnx import Kokoro
@@ -72,9 +144,8 @@ def _engine():
     return _ENGINE
 
 
-def synthesize(text: str, out_path: str, voice: str, speed: float = 1.0) -> str:
-    import soundfile as sf
-    kokoro, g2p = _engine()
+def _synthesize_chunk(kokoro, g2p, text: str, voice: str, speed: float) -> np.ndarray:
+    """Run the model on a single (in-limit) text chunk and return float32 audio."""
     ids = kokoro.tokenizer.tokenize(g2p(text))
     style = kokoro.get_voice_style(voice)[len(ids)]
     inputs = {
@@ -82,6 +153,23 @@ def synthesize(text: str, out_path: str, voice: str, speed: float = 1.0) -> str:
         "style": np.array(style, dtype=np.float32),
         "speed": np.array([speed], dtype=np.float32),
     }
-    audio = np.asarray(kokoro.sess.run(None, inputs)[0], dtype=np.float32).reshape(-1)
+    return np.asarray(kokoro.sess.run(None, inputs)[0], dtype=np.float32).reshape(-1)
+
+
+def synthesize(text: str, out_path: str, voice: str, speed: float = 1.0) -> str:
+    import soundfile as sf
+    kokoro, g2p = _engine()
+    count_tokens = lambda s: len(kokoro.tokenizer.tokenize(g2p(s)))
+    chunks = _chunk(text, count_tokens)
+    if len(chunks) == 1:
+        audio = _synthesize_chunk(kokoro, g2p, chunks[0], voice, speed)
+    else:
+        parts = [_synthesize_chunk(kokoro, g2p, c, voice, speed) for c in chunks]
+        gap = np.zeros(_CHUNK_GAP_SAMPLES, dtype=np.float32)
+        merged = [parts[0]]
+        for part in parts[1:]:
+            merged.append(gap)
+            merged.append(part)
+        audio = np.concatenate(merged)
     sf.write(out_path, audio, SAMPLE_RATE, subtype="PCM_16")
     return out_path
