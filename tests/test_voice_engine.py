@@ -2,6 +2,15 @@ import os
 import pytest
 from video_agent import voice_engine
 
+@pytest.mark.skipif(not os.environ.get("KOKORO_SMOKE"),
+                    reason="set KOKORO_SMOKE=1 to download models and run real synthesis")
+def test_real_zh_synthesis(tmp_path):
+    import soundfile as sf
+    out = str(tmp_path / "t.wav")
+    voice_engine.synthesize("大家好，这是一段本地离线语音合成的测试。", out, "zf_001")
+    data, sr = sf.read(out)
+    assert sr == 24000 and len(data) / sr > 1.0
+
 def test_synthesize_uses_injected_engine(monkeypatch, tmp_path):
     import numpy as np
     class FakeSess:
