@@ -17,11 +17,15 @@ def entrance_hold(anim, duration: float, min_entrance: float = 0.8) -> list[Anim
     return anims
 
 
-from . import title, bullets, closing, section, quote, compare, summary  # noqa: E402  (须在 entrance_hold 之后)
+from . import (  # noqa: E402  (须在 entrance_hold 之后)
+    title, bullets, closing, section, quote, compare, summary,
+    steps, cycle, tree, grid, metric,
+)
 
 TEMPLATES = {
     "title": title, "bullets": bullets, "closing": closing,
     "section": section, "quote": quote, "compare": compare, "summary": summary,
+    "steps": steps, "cycle": cycle, "tree": tree, "grid": grid, "metric": metric,
 }
 
 
