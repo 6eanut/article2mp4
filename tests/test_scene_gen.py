@@ -25,3 +25,9 @@ def test_generate_ok():
 def test_generate_bad_then_fallback():
     spec = generate_scene_spec(NARR, LLMClient(S, transport=lambda m: "nonsense"))
     assert spec.scenes[0].type == "title"  # 兜底
+
+def test_generate_wrong_shape_then_fallback():
+    # 合法 JSON 但结构错误（缺 scenes）：应走 retry→fallback，而不是抛 ValidationError
+    spec = generate_scene_spec(NARR, LLMClient(S, transport=lambda m: '{"foo":"bar"}'))
+    assert spec.scenes[0].type == "title"
+    assert [s.narration_id for s in spec.scenes] == [0, 1, 2]
