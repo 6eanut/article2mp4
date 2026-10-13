@@ -1,0 +1,8 @@
+.env
+.env-mamba
+articles/
+output/
+media/
+__pycache__/
+*.pyc
+.pytest_cache/
