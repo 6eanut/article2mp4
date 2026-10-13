@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import os
 from manim import Scene, Text, FadeIn, DOWN, config
 
@@ -25,7 +26,8 @@ def build_scene_sequence(scenes, durations, subtitle_map):
         sub = subtitle_map.get(sc["id"]) if subtitle_map else None
         try:
             anims = render_scene(sc["type"], sc["props"], dur, sub)
-        except Exception:  # 画面出错降级继续：该镜退化为纯文字镜
+        except Exception as e:  # 画面出错降级继续：该镜退化为纯文字镜
+            logging.warning("场景 %s 渲染失败，降级为纯文字镜: %s", sc.get("id"), e)
             anims = _degrade_shot(sc, dur, sub)
         seq.append((sc["type"], anims))
     return seq
