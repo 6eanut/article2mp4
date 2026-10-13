@@ -56,3 +56,15 @@ def mux(video_path, audio_path, bgm_path, out_path) -> str:
 def assert_av_sync(video_dur: float, audio_dur: float, tol: float = 0.3) -> None:
     assert abs(video_dur - audio_dur) <= tol, \
         f"音画时长偏差过大: video={video_dur:.2f}s audio={audio_dur:.2f}s tol={tol}"
+
+
+def trim_audio(in_path, seconds, out_path=None) -> str:
+    """把音频裁/补齐到 seconds（pad 到等长，避免 mux 的 -shortest 吃掉尾巴）。"""
+    ff = ffmpeg_path()
+    out_path = out_path or in_path
+    subprocess.run(
+        [ff, "-y", "-i", in_path, "-t", f"{seconds:.3f}",
+         "-af", f"apad=whole_dur={seconds:.3f}", out_path],
+        check=True, capture_output=True,
+    )
+    return out_path

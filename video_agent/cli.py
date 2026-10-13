@@ -7,10 +7,10 @@ from .config import load_settings
 from .llm import LLMClient
 from .script_gen import generate_narration
 from .scene_gen import generate_scene_spec
-from .timing import align_durations, GAP
+from .timing import align_durations, GAP, fit_total
 from .tts import render_voiceover, probe_duration
 from .render import render_video
-from .compose import concat_voiceover, mux, assert_av_sync
+from .compose import concat_voiceover, mux, assert_av_sync, trim_audio
 
 
 def _default_deps():
@@ -28,6 +28,8 @@ def _default_deps():
         ids = [s.id for s in k["narration"].segments]
         vo = concat_voiceover(k["audio_dir"], ids,
                               os.path.join(k["out_dir"], "voice.mp3"), gap=GAP)
+        if k.get("trim_to"):
+            vo = trim_audio(vo, k["trim_to"])
         out = os.path.join(k["out_dir"], f"{k['name']}_{k['aspect']}.mp4")
         mux(k["video"], vo, k.get("bgm"), out)
         assert_av_sync(probe_duration(out), probe_duration(vo), tol=0.3)
@@ -53,8 +55,13 @@ def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
 
     audio_dir = os.path.join(out_dir, "audio")
     durations = deps["voiceover"](narration, audio_dir, voice)
+    trim_to = None
     if max_seconds:
-        durations = [min(d, max_seconds) for d in durations]
+        k = fit_total(durations, max_seconds)
+        if k < len(durations):
+            narration = narration.model_copy(update={"segments": narration.segments[:k]})
+            durations = durations[:k]
+        trim_to = sum(durations) + GAP * len(durations)
 
     if voiceover_only:
         return {"narration": os.path.join(out_dir, "narration.json")}
@@ -74,7 +81,7 @@ def run_pipeline(article_path, aspect, max_seconds, voice, subtitle,
                                out_dir, subtitle, subtitles)
         result[asp] = deps["compose"](
             video=video, audio_dir=audio_dir, narration=narration, out_dir=out_dir,
-            name=name, aspect=asp, bgm=bgm,
+            name=name, aspect=asp, bgm=bgm, trim_to=trim_to,
         )
     return {"video": result[aspect] if aspect in result else next(iter(result.values())),
             "all": result}
