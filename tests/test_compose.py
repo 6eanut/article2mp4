@@ -29,3 +29,22 @@ def test_trim_audio_builds_pad_command(tmp_path, monkeypatch):
                         lambda *a, **k: called.update(argv=a[0]))
     c.trim_audio("in.mp3", 3.0, "out.mp3")
     assert "-t" in called["argv"] and "apad=whole_dur=3.000" in called["argv"]
+
+def test_concat_voiceover_applies_loudnorm(monkeypatch, tmp_path):
+    import video_agent.compose as c
+    seen = {}
+    monkeypatch.setattr(c, "ffmpeg_path", lambda: "ffmpeg")
+    monkeypatch.setattr(c.subprocess, "run", lambda *a, **k: seen.update(argv=a[0]))
+    (tmp_path / "000.mp3").write_bytes(b"x")
+    c.concat_voiceover(str(tmp_path), [0], "out.mp3", gap=0.4)
+    joined = " ".join(seen["argv"])
+    assert "loudnorm" in joined and "I=-14" in joined
+
+def test_concat_voiceover_can_skip_loudnorm(monkeypatch, tmp_path):
+    import video_agent.compose as c
+    seen = {}
+    monkeypatch.setattr(c, "ffmpeg_path", lambda: "ffmpeg")
+    monkeypatch.setattr(c.subprocess, "run", lambda *a, **k: seen.update(argv=a[0]))
+    (tmp_path / "000.mp3").write_bytes(b"x")
+    c.concat_voiceover(str(tmp_path), [0], "out.mp3", gap=0.4, loudnorm=False)
+    assert "loudnorm" not in " ".join(seen["argv"])

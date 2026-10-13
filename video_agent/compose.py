@@ -3,6 +3,10 @@ import os
 import subprocess
 from .tts import ffmpeg_path
 
+# EBU R128 loudness target for the web/streaming reference level, applied to the
+# concatenated voiceover: -14 LUFS integrated with a -1.5 dBTP ceiling.
+LOUDNORM = "loudnorm=I=-14:TP=-1.5:LRA=11"
+
 
 def build_concat_file(ids, audio_dir) -> str:
     return "\n".join(f"file '{os.path.join(audio_dir, f'{i:03d}.mp3')}'" for i in ids) + "\n"
@@ -16,13 +20,16 @@ def build_concat_filter(n: int, gap: float) -> str:
     return f"{pad}{join}concat=n={n}:v=0:a=1[out]"
 
 
-def concat_voiceover(audio_dir, ids, out_path, gap: float = 0.0) -> str:
+def concat_voiceover(audio_dir, ids, out_path, gap: float = 0.0,
+                     loudnorm: bool = True) -> str:
     ff = ffmpeg_path()
     inputs = []
     for i in ids:
         inputs += ["-i", os.path.join(audio_dir, f"{i:03d}.mp3")]
     if gap and gap > 0:
         filt = build_concat_filter(len(ids), gap)
+        if loudnorm:  # normalize loudness after concatenation
+            filt = filt.replace("[out]", f"[pre];[pre]{LOUDNORM}[out]")
         subprocess.run([ff, "-y", *inputs, "-filter_complex", filt,
                         "-map", "[out]", out_path], check=True, capture_output=True)
     else:
@@ -30,8 +37,9 @@ def concat_voiceover(audio_dir, ids, out_path, gap: float = 0.0) -> str:
         try:
             with open(lst, "w", encoding="utf-8") as f:
                 f.write(build_concat_file(ids, audio_dir))
+            af = ["-af", LOUDNORM] if loudnorm else ["-c", "copy"]
             subprocess.run([ff, "-y", "-f", "concat", "-safe", "0", "-i", lst,
-                            "-c", "copy", out_path], check=True, capture_output=True)
+                            *af, out_path], check=True, capture_output=True)
         finally:
             if os.path.exists(lst):
                 os.remove(lst)
