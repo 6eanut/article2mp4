@@ -14,3 +14,8 @@ def test_build_sequence_durations_sum():
     seq = build_scene_sequence(SCENES, [2.0, 3.0], None)
     total = sum(a.run_time for _, anims in seq for a in anims)
     assert abs(total - 5.0) < 1e-6
+
+def test_build_sequence_length_mismatch_raises():
+    import pytest
+    with pytest.raises(ValueError):
+        build_scene_sequence(SCENES, [2.0], None)  # 2 scenes, 1 duration

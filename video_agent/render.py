@@ -8,6 +8,11 @@ from .templates import render_scene
 
 
 def build_scene_sequence(scenes, durations, subtitle_map):
+    if len(scenes) != len(durations):
+        raise ValueError(
+            f"场景数({len(scenes)})与时长数({len(durations)})不一致——"
+            f"违反镜头/旁白 1:1 契约"
+        )
     seq = []
     for sc, dur in zip(scenes, durations):
         sub = subtitle_map.get(sc["id"]) if subtitle_map else None
