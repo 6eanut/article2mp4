@@ -68,7 +68,10 @@ class ExplainSpec(Scene):
             build_scene_sequence(self.SCENES, self.DURATIONS, None), self.SCENES
         ):
             if self.PROGRESS is not None:
-                self.PROGRESS(self._DONE, len(self.SCENES))
+                # Call via the class so a plain-function/partial callback is not
+                # bound as an instance method (which would inject `self` and add
+                # an argument, breaking the `(done, total)` contract).
+                type(self).PROGRESS(self._DONE, len(self.SCENES))
             self._DONE += 1
             text = self.SUBTITLE_MAP.get(sc["id"])
             if text:

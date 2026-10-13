@@ -45,3 +45,26 @@ def test_frame_dimensions_match_canvas_aspect():
     for aspect, (w, h) in (("916", (1080, 1920)), ("169", (1920, 1080))):
         fw, fh = frame_dimensions(aspect)
         assert abs(fw / fh - w / h) < 1e-9
+
+def test_progress_callback_called_with_done_total(monkeypatch):
+    # Regression: the progress callback is a plain lambda (done, total). Stored as a
+    # class attribute and called via `self`, it used to be descriptor-bound as an
+    # instance method, injecting `self` and crashing with
+    # "takes 2 positional arguments but 3 were given". It must be called through the
+    # class so exactly two positional args reach the callback.
+    import video_agent.render as r
+    calls = []
+    scenes = [
+        {"id": 0, "narration_id": 0, "type": "title", "props": {"title": "T"}},
+        {"id": 1, "narration_id": 1, "type": "quote", "props": {"text": "q"}},
+    ]
+    monkeypatch.setattr(r, "render_scene", lambda *a, **k: [])
+    r.ExplainSpec.SCENES = scenes
+    r.ExplainSpec.DURATIONS = [1.0, 1.0]
+    r.ExplainSpec.SUBTITLE_MAP = {}
+    r.ExplainSpec.PROGRESS = lambda done, total: calls.append((done, total))  # plain fn
+    r.ExplainSpec._DONE = 0
+    sc = r.ExplainSpec()
+    monkeypatch.setattr(sc, "play", lambda *a, **k: None)
+    sc.construct()
+    assert calls == [(0, 2), (1, 2)]
