@@ -21,4 +21,5 @@ def render(props, duration, subtitle=None):
     ])
     ring = VGroup(arrows, nodes)
     body = VGroup(h, ring).arrange(DOWN, buff=0.6)
+    fit_group(body)
     return entrance_hold(FadeIn(body), duration)
