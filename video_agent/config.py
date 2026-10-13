@@ -9,7 +9,6 @@ TEMPLATE_TYPES = [
     "title", "section", "bullets", "steps", "cycle", "tree",
     "compare", "grid", "metric", "quote", "summary", "closing",
 ]
-FALLBACK_CHAIN = ["bullets", "title", "closing"]
 
 
 @dataclass(frozen=True)
